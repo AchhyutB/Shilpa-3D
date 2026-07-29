@@ -1,7 +1,7 @@
 import { User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-export default function Header({ onNavigate, onLogout }) {
+export default function Header({ onNavigate, onLogout, username }) {
   const navigate = useNavigate();
 
   return (
@@ -42,7 +42,7 @@ export default function Header({ onNavigate, onLogout }) {
           {/* User Profile */}
           <div className="flex items-center gap-2 bg-secondary/40 rounded-full px-4 py-2">
             <User size={20} className="text-accent" />
-            <span className="text-foreground font-serif">Ram</span>
+            <span className="text-foreground font-serif">{username || 'User'}</span>
           </div>
         </nav>
       </div>
