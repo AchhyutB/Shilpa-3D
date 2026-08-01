@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import { dbConnection } from "./db/dbconnection.js";
 import passport from "./auth/passport.js";
 import authRoutes from "./routes/auth.routes.js";
+import uploadRoutes from "./routes/upload.routes.js";
 const app = express();
 
 app.use(cors({
@@ -18,6 +19,7 @@ app.use(cookieParser());
 app.use(passport.initialize());
 
 app.use("/api", authRoutes);
+app.use("/api", uploadRoutes);
 
 const start = async () => {
   await dbConnection();

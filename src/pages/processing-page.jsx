@@ -3,72 +3,93 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Header from '@/components/shared/header';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { authService } from '../lib/authServices';
 
-const stages = [
-  {
-    name: '24 images loaded......',
-    detail: 'COLMAP',
-  },
-  {
-    name: '3,412 sparse point',
-    detail: 'NeRF iter 55241 | loss : 0.0043',
-  },
-  {
-    name: 'Gaussian Splatting queued',
-    detail: '',
-  },
+// Maps backend stage names (from api_spec.md) to what we show the user
+const STAGE_INFO = {
+  not_started: { label: 'Waiting to start…', detail: '' },
+  colmap_features: { label: 'Extracting image features', detail: 'COLMAP' },
+  colmap_matching: { label: 'Matching features across images', detail: 'COLMAP' },
+  colmap_mapper: { label: 'Building sparse point cloud', detail: 'COLMAP' },
+  nerf_convert: { label: 'Preparing NeRF dataset', detail: 'nerfstudio' },
+  nerf_training: { label: 'Training NeRF model', detail: 'nerfstudio' },
+  nerf_render: { label: 'Rendering NeRF views', detail: 'nerfstudio' },
+  gaussian_training: { label: 'Training Gaussian Splatting model', detail: '' },
+  gaussian_render: { label: 'Rendering Gaussian Splatting output', detail: '' },
+  done: { label: 'Complete', detail: '' },
+};
+
+const STAGE_ORDER = [
+  'not_started',
+  'colmap_features',
+  'colmap_matching',
+  'colmap_mapper',
+  'nerf_convert',
+  'nerf_training',
+  'nerf_render',
+  'gaussian_training',
+  'gaussian_render',
+  'done',
 ];
 
-export default function ProcessingPage({
-  isLoggedIn,
-  onLogout,
-}) {
+export default function ProcessingPage({ isLoggedIn, onLogout, username }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const sessionId = location.state?.sessionId;
 
-  const [currentStage, setCurrentStage] = useState(0);
-  const [progress, setProgress] = useState(0);
+  const [stage, setStage] = useState('not_started');
+  const [percent, setPercent] = useState(0);
+  const [error, setError] = useState('');
 
-  // Stage progression
+  // No session to track — bounce back to upload
   useEffect(() => {
-    const stageInterval = setInterval(() => {
-      setCurrentStage((prev) =>
-        prev < stages.length - 1 ? prev + 1 : prev
-      );
-    }, 3000);
+    if (!sessionId) {
+      navigate('/home', { replace: true });
+    }
+  }, [sessionId, navigate]);
 
-    return () => clearInterval(stageInterval);
-  }, []);
-
-  // Progress animation
+  // Poll /api/status/:sessionId every 5 seconds
   useEffect(() => {
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) return 100;
-        return Math.min(prev + 5 + Math.random() * 10, 100);
-      });
-    }, 500);
+    if (!sessionId) return;
 
-    return () => clearInterval(progressInterval);
-  }, []);
+    let cancelled = false;
 
-  // Navigate when done
+    const poll = async () => {
+      try {
+        const data = await authService.getStatus(sessionId);
+        if (cancelled) return;
+        setStage(data.stage);
+        setPercent(data.percent);
+      } catch (err) {
+        if (!cancelled) setError('Lost connection to server. Retrying…');
+      }
+    };
+
+    poll(); // fire immediately, then every 5s
+    const interval = setInterval(poll, 5000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [sessionId]);
+
+  // Navigate on to results once done
   useEffect(() => {
-    if (progress >= 100) {
+    if (stage === 'done') {
       const timer = setTimeout(() => {
-        navigate('/results');
-      }, 2000);
-
+        navigate('/results', { state: { sessionId } });
+      }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [progress, navigate]);
+  }, [stage, sessionId, navigate]);
+
+  const currentStageIndex = STAGE_ORDER.indexOf(stage);
 
   return (
     <div className="min-h-screen bg-background">
-      <Header
-        isLoggedIn={isLoggedIn}
-        onLogout={onLogout}
-      />
+      <Header isLoggedIn={isLoggedIn} onLogout={onLogout} username={username} />
 
       <main className="sm:h-[calc(100vh-9rem)] pt-28 pb-12">
         <div className="max-w-4xl mx-auto px-6 space-y-12 flex flex-col items-center justify-center min-h-[60vh]">
@@ -97,15 +118,13 @@ export default function ProcessingPage({
             <div className="h-2 bg-secondary rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-accent"
-                animate={{
-                  width: `${Math.min(progress, 100)}%`,
-                }}
+                animate={{ width: `${Math.min(percent, 100)}%` }}
                 transition={{ duration: 0.3 }}
               />
             </div>
 
             <p className="text-center text-sm text-muted-foreground">
-              {Math.round(progress)}%
+              {Math.round(percent)}%
             </p>
           </motion.div>
 
@@ -117,26 +136,28 @@ export default function ProcessingPage({
             className="bg-background border border-border/60 rounded-2xl p-4 w-full max-w-2xl"
           >
             <div className="space-y-4 font-mono text-sm">
-              {stages.map((stage, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0 }}
-                  animate={{
-                    opacity: currentStage >= idx ? 1 : 0.3,
-                  }}
-                  transition={{ duration: 0.3 }}
-                  className="text-muted-foreground"
-                >
-                  <div>{stage.name}</div>
-
-                  {stage.detail && (
-                    <div className="text-xs mt-1">
-                      {stage.detail}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
+              {STAGE_ORDER.filter((s) => s !== 'not_started' && s !== 'done').map((s, idx) => {
+                const info = STAGE_INFO[s];
+                const stepIndex = STAGE_ORDER.indexOf(s);
+                const isActive = currentStageIndex >= stepIndex;
+                return (
+                  <motion.div
+                    key={s}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: isActive ? 1 : 0.3 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-muted-foreground"
+                  >
+                    <div>{info.label}</div>
+                    {info.detail && <div className="text-xs mt-1">{info.detail}</div>}
+                  </motion.div>
+                );
+              })}
             </div>
+
+            {error && (
+              <p className="text-xs text-red-500 font-mono mt-4">{error}</p>
+            )}
           </motion.div>
         </div>
       </main>

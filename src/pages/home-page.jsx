@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import Header from "../components/shared/header";
 import { X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { authService } from "../lib/authServices";
 
 export default function HomePage({
   onNavigate,
@@ -12,9 +13,20 @@ export default function HomePage({
   username,
 }) {
   const navigate = useNavigate();
-  const [uploadedImages, setUploadedImages] = useState([]);
+  const [uploadedImages, setUploadedImages] = useState([]); // [{ file, url }]
   const [selectedMethods, setSelectedMethods] = useState(new Set());
   const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  const addFiles = (fileList) => {
+    const files = Array.from(fileList).slice(0, 40 - uploadedImages.length);
+    const newEntries = files.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+    setUploadedImages([...uploadedImages, ...newEntries]);
+  };
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -32,18 +44,14 @@ export default function HomePage({
     setDragActive(false);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      const newImages = Array.from(files).slice(0, 40 - uploadedImages.length);
-      const imageUrls = newImages.map((file) => URL.createObjectURL(file));
-      setUploadedImages([...uploadedImages, ...imageUrls]);
+      addFiles(files);
     }
   };
 
   const handleFileSelect = (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const newImages = Array.from(files).slice(0, 40 - uploadedImages.length);
-      const imageUrls = newImages.map((file) => URL.createObjectURL(file));
-      setUploadedImages([...uploadedImages, ...imageUrls]);
+      addFiles(files);
     }
     e.target.value = "";
   };
@@ -64,9 +72,46 @@ export default function HomePage({
     }
   };
 
+  const handleStart = async () => {
+    if (uploadedImages.length === 0) return;
+
+    if (selectedMethods.size === 0) {
+      setError("Select at least one processing method");
+      return;
+    }
+
+    try {
+      setError("");
+      setUploading(true);
+
+      const files = uploadedImages.map((img) => img.file);
+      const { session_id } = await authService.uploadImages(files);
+
+      // Map the selected methods Set into what the API expects
+      const method =
+        selectedMethods.has("nerf") && selectedMethods.has("gaussian")
+          ? "both"
+          : selectedMethods.has("nerf")
+            ? "nerf"
+            : "gaussian";
+
+      const statueName = `statue-${Date.now()}`;
+      await authService.reconstruct(session_id, statueName, method);
+
+      navigate("/processing", {
+        state: { sessionId: session_id, statueName, method },
+      });
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header onNavigate={onNavigate} onLogout={onLogout} username={username} />
+
       <main className="sm:h-[calc(100vh-9rem)] pt-31 pb-12">
         <div className="max-w-7xl mx-auto px-6 space-y-12">
           {/* Upload Area */}
@@ -140,7 +185,7 @@ export default function HomePage({
                       className="relative aspect-square bg-secondary/40 rounded-lg overflow-hidden border border-border/30 group"
                     >
                       <img
-                        src={image}
+                        src={image.url}
                         alt={`Upload ${idx + 1}`}
                         className="w-full h-full object-cover"
                       />
@@ -196,6 +241,12 @@ export default function HomePage({
             </div>
           </motion.div>
 
+          {error && (
+            <p className="text-sm text-red-500 text-center font-mono">
+              {error}
+            </p>
+          )}
+
           {/* Actions */}
           <div className="flex gap-4 justify-end">
             <Button
@@ -205,16 +256,16 @@ export default function HomePage({
                 setUploadedImages([]);
                 document.getElementById("file-input").value = "";
               }}
-              disabled={uploadedImages.length === 0}
+              disabled={uploadedImages.length === 0 || uploading}
             >
               Clear
             </Button>
             <Button
-              onClick={() => navigate("/processing")}
+              onClick={handleStart}
               className="bg-accent border border-border-cream text-accent-foreground hover:bg-accent/90 px-8 py-6 text-lg font-medium rounded-full"
-              disabled={uploadedImages.length === 0}
+              disabled={uploadedImages.length === 0 || uploading}
             >
-              Start
+              {uploading ? "Uploading…" : "Start"}
             </Button>
           </div>
         </div>
