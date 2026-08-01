@@ -87,8 +87,8 @@ export default function ThreeDViewerPage({
               transition={{ duration: 0.6 }}
               className="col-span-1"
             >
-              <div className="w-full h-[300px] sm:h-[480px] bg-border/40 border border-border/30 rounded-2xl flex items-center justify-center overflow-hidden relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-secondary/20 to-secondary/5 flex items-center justify-center">
+              <div className="w-full h-75 sm:h-120 bg-border/40 border border-border/30 rounded-2xl flex items-center justify-center overflow-hidden relative">
+                <div className="absolute inset-0 bg-linear-to-br from-secondary/20 to-secondary/5 flex items-center justify-center">
                   <div className="text-center space-y-4">
                     <p className="text-sm text-secondary-foreground font-mono">Drag-Scroll-Pan</p>
                   </div>
@@ -102,7 +102,7 @@ export default function ThreeDViewerPage({
               transition={{ duration: 0.6 }}
               className="space-y-6"
             >
-              <div className="bg-background border border-2 border-dashed border-border/60 rounded-2xl p-6 space-y-4">
+              <div className="bg-background border-2 border-dashed border-border/60 rounded-2xl p-6 space-y-4">
                 <div className="space-y-2">
                   <h3 className="font-mono text-foreground">Model</h3>
                   <p className="text-2xl font-mono text-accent">{model.toUpperCase()}</p>
@@ -154,14 +154,14 @@ export default function ThreeDViewerPage({
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 sm:flex-none sm:w-40 !border-foreground font-serif text-foreground hover:bg-secondary py-6 rounded-full"
+                  className="flex-1 sm:flex-none sm:w-40 border-foreground! font-serif text-foreground hover:bg-secondary py-6 rounded-full"
                   onClick={handleDownload}
                 >
                   Download
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 sm:flex-none sm:w-40 !border-foreground text-foreground font-serif hover:bg-secondary py-6 rounded-full"
+                  className="flex-1 sm:flex-none sm:w-40 border-foreground! text-foreground font-serif hover:bg-secondary py-6 rounded-full"
                   onClick={() => navigate('/home')}
                 >
                   Home

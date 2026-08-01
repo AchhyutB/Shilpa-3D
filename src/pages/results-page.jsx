@@ -104,7 +104,7 @@ export default function ResultsPage({
               </h2>
 
               {/* Viewer box — full width, fixed aspect ratio */}
-              <div className="w-full aspect-[4/3] bg-secondary/40 border border-border/30 rounded-xl flex items-center justify-center" />
+              <div className="w-full aspect-4/3 bg-secondary/40 border border-border/30 rounded-xl flex items-center justify-center" />
 
               <div className="grid grid-cols-3 text-center text-xs sm:text-sm">
                 <div className="text-accent font-mono">
@@ -131,7 +131,7 @@ export default function ResultsPage({
               </h2>
 
               {/* Viewer box — full width, fixed aspect ratio */}
-              <div className="w-full aspect-[4/3] bg-secondary/40 border border-border/30 rounded-xl flex items-center justify-center" />
+              <div className="w-full aspect-4/3 bg-secondary/40 border border-border/30 rounded-xl flex items-center justify-center" />
 
               <div className="grid grid-cols-3 text-center text-xs sm:text-sm">
                 <div className="text-accent font-mono">
@@ -156,7 +156,7 @@ export default function ResultsPage({
           >
             <Button
               variant="outline"
-              className="w-full sm:w-auto font-serif !border-foreground text-foreground hover:bg-secondary px-8 py-6 rounded-full"
+              className="w-full sm:w-auto font-serif border-foreground! text-foreground hover:bg-secondary px-8 py-6 rounded-full"
               onClick={handleExportReport}
             >
               Export Report

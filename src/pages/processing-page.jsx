@@ -83,7 +83,7 @@ export default function ProcessingPage({
             <img
               src="/assets/main.png"
               alt="Shilpa3D Logo"
-              className="w-[400px] h-auto object-contain"
+              className="w-100 h-auto object-contain"
             />
           </motion.div>
 

@@ -61,7 +61,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
             <img
               src="/assets/main.png"
               alt="Shilpa3D Logo"
-              className="w-[140px] h-auto object-contain"
+              className="w-35 h-auto object-contain"
             />
           </div>
 
@@ -85,7 +85,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
                 placeholder="Enter username"
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                className="!bg-secondary-foreground border-2 border-border h-14 px-5 rounded-xl mt-1 text-secondary placeholder:text-secondary/40 font-mono"
+                className="bg-secondary-foreground! border-2 border-border h-14 px-5 rounded-xl mt-1 text-secondary placeholder:text-secondary/40 font-mono"
               />
             </div>
 
@@ -103,7 +103,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  className="!bg-secondary-foreground border-2 border-border h-14 px-5 pr-12 rounded-xl text-secondary placeholder:text-secondary/40 font-mono"
+                  className="bg-secondary-foreground! border-2 border-border h-14 px-5 pr-12 rounded-xl text-secondary placeholder:text-secondary/40 font-mono"
                 />
 
                 <button
@@ -168,7 +168,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
             <Button
               variant="outline"
               type="button"
-              className="w-full h-14 rounded-lg border-2 !bg-card-foreground !border-border !text-background hover:bg-secondary transition-all font-medium gap-2 text-sm"
+              className="w-full h-14 rounded-lg border-2 bg-card-foreground! border-border! text-background! hover:bg-secondary transition-all font-medium gap-2 text-sm"
               onClick={handleGoogleLogin}
             >
               <FaGoogle className="h-4 w-4" />

@@ -85,7 +85,7 @@ export default function HistoryPage({onNavigate, isLoggedIn, onLogout, previousP
                 className="bg-muted/40 border border-border/60 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6"
               >
                 <div className="flex gap-6 flex-1">
-                  <div className="w-20 h-20 bg-primary/10 rounded-lg flex-shrink-0 overflow-hidden">
+                  <div className="w-20 h-20 bg-primary/10 rounded-lg shrink-0 overflow-hidden">
                     <div className="w-full h-full bg-background from-accent/30 to-accent/10 flex items-center justify-center">
                     </div>
                   </div>
@@ -96,11 +96,11 @@ export default function HistoryPage({onNavigate, isLoggedIn, onLogout, previousP
                   </div>
                 </div>
 
-                <div className="flex gap-2 sm:gap-3 flex-shrink-0 w-full sm:w-auto">
+                <div className="flex gap-2 sm:gap-3 shrink-0 w-full sm:w-auto">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 sm:flex-none !bg-accent border !border-border-cream !text-accent-foreground !hover:bg-accent/90 px-4 sm:px-8 py-6 text-lg font-medium rounded-full"
+                    className="flex-1 sm:flex-none bg-accent! border border-border-cream! text-accent-foreground! !hover:bg-accent/90 px-4 sm:px-8 py-6 text-lg font-medium rounded-full"
                     onClick={() => navigate('/3d-viewer')}
                   >
                     <Eye size={16} />
@@ -110,7 +110,7 @@ export default function HistoryPage({onNavigate, isLoggedIn, onLogout, previousP
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 sm:flex-none !bg-accent border !border-border-cream !text-accent-foreground !hover:bg-accent/90 px-4 sm:px-8 py-6 text-lg font-medium rounded-full"
+                    className="flex-1 sm:flex-none bg-accent! border border-border-cream! text-accent-foreground! !hover:bg-accent/90 px-4 sm:px-8 py-6 text-lg font-medium rounded-full"
                     onClick={() => handleDownload(item.id)}
                   >
                     <Download size={16} />
@@ -120,7 +120,7 @@ export default function HistoryPage({onNavigate, isLoggedIn, onLogout, previousP
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`flex-1 sm:flex-none !bg-accent border !border-border-cream !text-accent-foreground !hover:bg-accent/90 px-4 sm:px-8 py-6 text-lg font-medium rounded-full ${
+                    className={`flex-1 sm:flex-none bg-accent! border border-border-cream! text-accent-foreground! !hover:bg-accent/90 px-4 sm:px-8 py-6 text-lg font-medium rounded-full ${
                       deletingId === item.id ? 'opacity-50 cursor-wait' : ''
                     }`}
                     onClick={() => handleDelete(item.id)}
