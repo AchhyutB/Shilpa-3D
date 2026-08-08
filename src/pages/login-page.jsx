@@ -1,40 +1,40 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Checkbox } from '../components/ui/checkbox';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Checkbox } from "../components/ui/checkbox";
+import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
-import { authService } from '../lib/authServices';
+import { authService } from "../lib/authServices";
 
 export default function LoginPage({ onNavigate, onLogin }) {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
+    username: "",
+    password: "",
   });
 
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.username.trim() || !formData.password.trim()) {
-      setError('Enter your username and password to continue');
+      setError("Enter your username and password to continue");
       return;
     }
 
     try {
-      setError('');
+      setError("");
       setSubmitting(true);
       await authService.login(formData.username, formData.password);
       onLogin();
-      navigate('/home');
+      navigate("/home");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -55,7 +55,6 @@ export default function LoginPage({ onNavigate, onLogin }) {
         className="w-full max-w-md"
       >
         <div className="bg-card-foreground border border-border/30 rounded-3xl p-10 space-y-6">
-
           {/* Logo */}
           <div className="flex justify-center mb-4">
             <img
@@ -74,7 +73,6 @@ export default function LoginPage({ onNavigate, onLogin }) {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-
             {/* Username */}
             <div className="space-y-2">
               <label className="text-sm text-muted font-medium font-mono">
@@ -84,7 +82,9 @@ export default function LoginPage({ onNavigate, onLogin }) {
                 type="text"
                 placeholder="Enter username"
                 value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value })
+                }
                 className="bg-secondary-foreground! border-2 border-border h-14 px-5 rounded-xl mt-1 text-secondary placeholder:text-secondary/40 font-mono"
               />
             </div>
@@ -109,7 +109,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-4 flex items-center text-muted hover:text-secondary transition-colors"
+                  className="absolute inset-y-0 right-4 flex items-center text-muted hover:text-secondary cursor-pointer transition-colors"
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" />
@@ -121,7 +121,9 @@ export default function LoginPage({ onNavigate, onLogin }) {
             </div>
 
             {error && (
-              <p className="text-sm text-red-500 text-center font-mono">{error}</p>
+              <p className="text-sm text-red-500 text-center font-mono">
+                {error}
+              </p>
             )}
 
             {/* Remember me + Forgot password */}
@@ -132,11 +134,17 @@ export default function LoginPage({ onNavigate, onLogin }) {
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(checked)}
                 />
-                <label htmlFor="remember" className="text-sm font-mono text-secondary cursor-pointer">
+                <label
+                  htmlFor="remember"
+                  className="text-sm font-mono text-secondary cursor-pointer"
+                >
                   Remember me
                 </label>
               </div>
-              <Button variant="link" className="text-sm font-mono text-secondary cursor-pointer hover:text-secondary/40 p-0 h-auto">
+              <Button
+                variant="link"
+                className="text-sm font-mono text-secondary cursor-pointer hover:text-secondary/40 p-0 h-auto"
+              >
                 Forgot Password?
               </Button>
             </div>
@@ -148,7 +156,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
                 disabled={submitting}
                 className="w-60 py-6 text-lg rounded-full font-serif transition-all bg-accent text-background hover:bg-accent/90 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {submitting ? 'Logging in…' : 'Login'}
+                {submitting ? "Logging in…" : "Login"}
               </Button>
             </div>
           </form>
@@ -159,16 +167,18 @@ export default function LoginPage({ onNavigate, onLogin }) {
               <div className="w-full border-t border-border/30" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-card-foreground text-muted font-mono">Or login with</span>
+              <span className="px-2 bg-card-foreground text-muted font-mono">
+                Or login with
+              </span>
             </div>
           </div>
 
           {/* Google login */}
-          <div className="flex justify-center">
+          <div className="flex justify-center cursor-pointer">
             <Button
               variant="outline"
               type="button"
-              className="w-full h-14 rounded-lg border-2 bg-card-foreground! border-border! text-background! hover:bg-secondary transition-all font-medium gap-2 text-sm"
+              className="w-full h-14 rounded-lg cursor-pointer border-2 bg-card-foreground! border-border! text-background! hover:bg-secondary transition-all font-medium gap-2 text-sm"
               onClick={handleGoogleLogin}
             >
               <FaGoogle className="h-4 w-4" />
@@ -178,11 +188,11 @@ export default function LoginPage({ onNavigate, onLogin }) {
 
           {/* Sign up link */}
           <div className="text-center font-mono text-sm text-muted">
-            Don't have an account?{' '}
+            Don't have an account?{" "}
             <Button
               variant="link"
-              onClick={() => navigate('/signup')}
-              className="text-accent hover:text-accent/80 p-0 h-auto"
+              onClick={() => navigate("/signup")}
+              className="text-accent hover:text-accent/80 p-0 h-auto cursor-pointer"
             >
               Sign up
             </Button>

@@ -10,10 +10,7 @@ export const assignSessionId = (req, res, next) => {
   fs.mkdirSync(sessionDir, { recursive: true });
   fs.writeFileSync(
     path.join(sessionDir, "owner.json"),
-    JSON.stringify({
-      owner: req.user?.username || null,
-      createdAt: new Date().toISOString(),
-    })
+    JSON.stringify({ owner: req.user?.username || null })
   );
 
   next();
