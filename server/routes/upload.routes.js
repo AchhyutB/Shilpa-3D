@@ -14,7 +14,7 @@ router.post("/upload", authenticateToken, assignSessionId, upload.array("images"
 router.post("/reconstruct", authenticateToken, requireOwnership, startReconstruct);
 router.get("/status/:session_id", authenticateToken, requireOwnership, getStatus);
 router.get("/results/:session_id", authenticateToken, requireOwnership, getResults);
-router.get("/files/:session_id/:filename", authenticateToken, requireOwnership, getFile);
+router.get("/files/:session_id/*filename", authenticateToken, requireOwnership, getFile);
 router.get("/history", authenticateToken, getHistory);
 router.delete("/history/:session_id", authenticateToken, deleteSession);
 

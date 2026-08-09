@@ -2,7 +2,12 @@ import fs from "fs";
 import path from "path";
 
 export const requireOwnership = (req, res, next) => {
-  const sessionId = req.params.session_id || req.body.session_id;
+  const sessionId = req.params.session_id || req.body?.session_id;
+
+  if (!sessionId) {
+    return res.status(400).json({ message: "session_id is required" });
+  }
+
   const ownerPath = path.join("server", "uploads", sessionId, "owner.json");
 
   if (!fs.existsSync(ownerPath)) {

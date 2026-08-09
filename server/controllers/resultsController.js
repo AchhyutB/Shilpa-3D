@@ -1,30 +1,40 @@
-import fs from "fs";
-import path from "path";
-
-export const getResults = (req, res) => {
+export const getResults = async (req, res) => {
   const { session_id } = req.params;
-  const manifestPath = path.join("server", "uploads", session_id, "results", "manifest.json");
-
-  if (!fs.existsSync(manifestPath)) {
-    return res.status(404).json({ message: "Results not available yet" });
-  }
 
   try {
-    const raw = fs.readFileSync(manifestPath, "utf-8");
-    const manifest = JSON.parse(raw);
-    return res.status(200).json(manifest);
+const response = await fetch(`${process.env.PIPELINE_URL}/jobs/${session_id}/results`, {
+  headers: { "ngrok-skip-browser-warning": "true" },
+});
+    if (response.status === 404) {
+      return res.status(404).json({ message: "Results not available yet" });
+    }
+    if (!response.ok) {
+      return res.status(502).json({ message: "Pipeline server error" });
+    }
+
+    const data = await response.json();
+    return res.status(200).json(data);
   } catch (err) {
-    return res.status(500).json({ message: "Failed to read results" });
+    return res.status(404).json({ message: "Results not available yet" });
   }
 };
 
-export const getFile = (req, res) => {
-  const { session_id, filename } = req.params;
-  const filePath = path.join("server", "uploads", session_id, "results", filename);
+export const getFile = async (req, res) => {
+  const { session_id } = req.params;
+  const filename = Array.isArray(req.params.filename) ? req.params.filename.join("/") : req.params.filename;
 
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ message: "File not found" });
+  try {
+const response = await fetch(`${process.env.PIPELINE_URL}/jobs/${session_id}/results`, {
+  headers: { "ngrok-skip-browser-warning": "true" },
+});
+    if (!response.ok) {
+      return res.status(404).json({ message: "File not found" });
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.set("Content-Type", response.headers.get("content-type") || "application/octet-stream");
+    return res.send(buffer);
+  } catch (err) {
+    return res.status(502).json({ message: "Failed to fetch file from pipeline" });
   }
-
-  return res.sendFile(path.resolve(filePath));
 };
