@@ -63,6 +63,9 @@ export const authService = {
     return data;
   },
 
+deleteSession: (sessionId) =>
+  request(`/history/${sessionId}`, { method: 'DELETE' }),
+
   getStatus: (sessionId) => request(`/status/${sessionId}`),
 
   reconstruct: (sessionId, statueName, method) =>

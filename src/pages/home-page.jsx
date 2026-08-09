@@ -1,23 +1,20 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Button } from "../components/ui/button";
-import Header from "../components/shared/header";
-import { X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { authService } from "../lib/authServices";
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import Header from '../components/shared/header';
+import { X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { authService } from '../lib/authServices';
 
-export default function HomePage({
-  onNavigate,
-  isLoggedIn,
-  onLogout,
-  username,
-}) {
+export default function HomePage({ onNavigate, isLoggedIn, onLogout, username }) {
   const navigate = useNavigate();
+  const [statueName, setStatueName] = useState('');
   const [uploadedImages, setUploadedImages] = useState([]); // [{ file, url }]
   const [selectedMethods, setSelectedMethods] = useState(new Set());
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const addFiles = (fileList) => {
     const files = Array.from(fileList).slice(0, 40 - uploadedImages.length);
@@ -31,9 +28,9 @@ export default function HomePage({
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
+    if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true);
-    } else if (e.type === "dragleave") {
+    } else if (e.type === 'dragleave') {
       setDragActive(false);
     }
   };
@@ -53,7 +50,7 @@ export default function HomePage({
     if (files && files.length > 0) {
       addFiles(files);
     }
-    e.target.value = "";
+    e.target.value = '';
   };
 
   const deleteImage = (indexToDelete) => {
@@ -75,34 +72,37 @@ export default function HomePage({
   const handleStart = async () => {
     if (uploadedImages.length === 0) return;
 
+    if (!statueName.trim()) {
+      setError('Give your statue a name');
+      return;
+    }
+
     if (selectedMethods.size === 0) {
-      setError("Select at least one processing method");
+      setError('Select at least one processing method');
       return;
     }
 
     try {
-      setError("");
+      setError('');
       setUploading(true);
 
       const files = uploadedImages.map((img) => img.file);
       const { session_id } = await authService.uploadImages(files);
 
-      // Map the selected methods Set into what the API expects
       const method =
-        selectedMethods.has("nerf") && selectedMethods.has("gaussian")
-          ? "both"
-          : selectedMethods.has("nerf")
-            ? "nerf"
-            : "gaussian";
+        selectedMethods.has('nerf') && selectedMethods.has('gaussian')
+          ? 'both'
+          : selectedMethods.has('nerf')
+          ? 'nerf'
+          : 'gaussian';
 
-      const statueName = `statue-${Date.now()}`;
-      await authService.reconstruct(session_id, statueName, method);
+      await authService.reconstruct(session_id, statueName.trim(), method);
 
-      navigate("/processing", {
-        state: { sessionId: session_id, statueName, method },
+      navigate('/processing', {
+        state: { sessionId: session_id, statueName: statueName.trim(), method },
       });
     } catch (err) {
-      setError(err.message || "Something went wrong. Please try again.");
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -114,15 +114,33 @@ export default function HomePage({
 
       <main className="sm:h-[calc(100vh-9rem)] pt-31 pb-12">
         <div className="max-w-7xl mx-auto px-6 space-y-12">
+
+          {/* Statue Name */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="max-w-md mx-auto space-y-2"
+          >
+            <label className="text-sm text-muted font-medium font-mono">
+              Name Your Statue
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g. Garden Buddha"
+              value={statueName}
+              onChange={(e) => setStatueName(e.target.value)}
+              className="bg-secondary-foreground! border-2 border-border h-14 px-5 rounded-xl text-secondary placeholder:text-secondary/40 font-mono"
+            />
+          </motion.div>
+
           {/* Upload Area */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className={`rounded-2xl p-24 text-center cursor-pointer transition-all border-2 border-dashed ${
-              dragActive
-                ? "bg-border/20 border-accent"
-                : "bg-border/40 border-foreground"
+              dragActive ? 'bg-border/20 border-accent' : 'bg-border/40 border-foreground'
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -133,12 +151,8 @@ export default function HomePage({
               <h2 className="text-3xl md:text-4xl font-mono text-foreground">
                 Upload Your Images Here
               </h2>
-              <p className="font-mono font-normal text-muted-foreground">
-                Drag and Drop or Select Files from Computer
-              </p>
-              <p className="text-sm font-mono text-muted-foreground">
-                JPG/PNG 20/40 images
-              </p>
+              <p className="font-mono font-normal text-muted-foreground">Drag and Drop or Select Files from Computer</p>
+              <p className="text-sm font-mono text-muted-foreground">JPG/PNG 20/40 images</p>
 
               <label htmlFor="file-input">
                 <Button
@@ -169,12 +183,8 @@ export default function HomePage({
               className="space-y-4"
             >
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-serif text-foreground">
-                  Uploaded Images
-                </h3>
-                <span className="text-accent font-serif">
-                  {uploadedImages.length}/40
-                </span>
+                <h3 className="text-lg font-serif text-foreground">Uploaded Images</h3>
+                <span className="text-accent font-serif">{uploadedImages.length}/40</span>
               </div>
 
               <div className="overflow-x-auto pb-2">
@@ -184,11 +194,7 @@ export default function HomePage({
                       key={idx}
                       className="relative aspect-square bg-secondary/40 rounded-lg overflow-hidden border border-border/30 group"
                     >
-                      <img
-                        src={image.url}
-                        alt={`Upload ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={image.url} alt={`Upload ${idx + 1}`} className="w-full h-full object-cover" />
                       <button
                         onClick={() => deleteImage(idx)}
                         className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -212,29 +218,25 @@ export default function HomePage({
             className="space-y-8"
           >
             <div className="text-center">
-              <h3 className="text-2xl font-serif text-foreground">
-                PROCESSING METHODS
-              </h3>
+              <h3 className="text-2xl font-serif text-foreground">PROCESSING METHODS</h3>
             </div>
 
             <div className="font-mono grid md:grid-cols-2 gap-6">
               {[
-                { id: "nerf", name: "NeRF" },
-                { id: "gaussian", name: "Gaussian Splatting" },
+                { id: 'nerf', name: 'NeRF' },
+                { id: 'gaussian', name: 'Gaussian Splatting' },
               ].map((method) => (
                 <button
                   key={method.id}
                   onClick={() => toggleMethod(method.id)}
                   className={`p-4 rounded-4xl border-2 transition-all ${
                     selectedMethods.has(method.id)
-                      ? "border-accent bg-accent/10 hover:bg-accent/20"
-                      : "border-accent bg-background hover:border-accent/50"
+                      ? 'border-accent bg-accent/10 hover:bg-accent/20'
+                      : 'border-accent bg-background hover:border-accent/50'
                   }`}
                 >
                   <div className="text-center space-y-2">
-                    <h4 className="text-lg font-serif text-accent">
-                      {method.name}
-                    </h4>
+                    <h4 className="text-lg font-serif text-accent">{method.name}</h4>
                   </div>
                 </button>
               ))}
@@ -242,9 +244,7 @@ export default function HomePage({
           </motion.div>
 
           {error && (
-            <p className="text-sm text-red-500 text-center font-mono">
-              {error}
-            </p>
+            <p className="text-sm text-red-500 text-center font-mono">{error}</p>
           )}
 
           {/* Actions */}
@@ -254,7 +254,7 @@ export default function HomePage({
               className="border-border/50 text-foreground hover:bg-secondary px-8 py-6 rounded-full"
               onClick={() => {
                 setUploadedImages([]);
-                document.getElementById("file-input").value = "";
+                document.getElementById('file-input').value = '';
               }}
               disabled={uploadedImages.length === 0 || uploading}
             >
@@ -265,9 +265,10 @@ export default function HomePage({
               className="bg-accent border border-border-cream text-accent-foreground hover:bg-accent/90 px-8 py-6 text-lg font-medium rounded-full"
               disabled={uploadedImages.length === 0 || uploading}
             >
-              {uploading ? "Uploading…" : "Start"}
+              {uploading ? 'Uploading…' : 'Start'}
             </Button>
           </div>
+
         </div>
       </main>
     </div>

@@ -58,3 +58,26 @@ export const getHistory = (req, res) => {
     return res.status(500).json({ message: "Failed to load history" });
   }
 };
+
+export const deleteSession = (req, res) => {
+  const { session_id } = req.params;
+  const sessionDir = path.join("server", "uploads", session_id);
+  const ownerPath = path.join(sessionDir, "owner.json");
+
+  if (!fs.existsSync(ownerPath)) {
+    return res.status(404).json({ message: "Session not found" });
+  }
+
+  try {
+    const ownerData = JSON.parse(fs.readFileSync(ownerPath, "utf-8"));
+    if (ownerData.owner !== req.user.username) {
+      return res.status(403).json({ message: "Not your session" });
+    }
+
+    fs.rmSync(sessionDir, { recursive: true, force: true });
+    return res.status(200).json({ message: "Session deleted" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Failed to delete session" });
+  }
+};
