@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Trash2 } from 'lucide-react';
 import Header from '../components/shared/header';
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +26,7 @@ export default function HistoryPage({ onNavigate, isLoggedIn, onLogout, username
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     authService
@@ -39,6 +41,29 @@ export default function HistoryPage({ onNavigate, isLoggedIn, onLogout, username
       navigate('/results', { state: { sessionId: session.session_id } });
     } else {
       navigate('/processing', { state: { sessionId: session.session_id } });
+    }
+  };
+
+  const handleDelete = async (e, session) => {
+    e.stopPropagation(); // don't trigger openSession when clicking delete
+
+    const confirmed = window.confirm(
+      `Delete "${session.statue || 'this session'}"? This can't be undone.`
+    );
+    if (!confirmed) return;
+
+    const previousSessions = sessions;
+    setDeletingId(session.session_id);
+    // Optimistic removal — feels instant, revert if the request fails
+    setSessions((prev) => prev.filter((s) => s.session_id !== session.session_id));
+
+    try {
+      await authService.deleteSession(session.session_id);
+    } catch (err) {
+      setSessions(previousSessions);
+      setError(err.message || 'Failed to delete session');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -97,13 +122,13 @@ export default function HistoryPage({ onNavigate, isLoggedIn, onLogout, username
           {!loading && !error && sessions.length > 0 && (
             <div className="space-y-4">
               {sessions.map((session, idx) => (
-                <motion.button
+                <motion.div
                   key={session.session_id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: idx * 0.05 }}
                   onClick={() => openSession(session)}
-                  className="w-full text-left bg-card-foreground border border-border/30 rounded-2xl p-6 flex items-center justify-between gap-4 hover:border-accent/50 transition-colors"
+                  className="w-full text-left bg-card-foreground border border-border/30 rounded-2xl p-6 flex items-center justify-between gap-4 hover:border-accent/50 transition-colors cursor-pointer"
                 >
                   <div className="space-y-1">
                     <h3 className="font-serif text-lg text-background">
@@ -115,23 +140,34 @@ export default function HistoryPage({ onNavigate, isLoggedIn, onLogout, username
                     </p>
                   </div>
 
-                  <div className="text-right shrink-0">
-                    <span
-                      className={`text-xs font-mono px-3 py-1 rounded-full ${
-                        session.stage === 'done'
-                          ? 'bg-accent/10 text-accent'
-                          : 'bg-secondary/40 text-muted-foreground'
-                      }`}
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-right">
+                      <span
+                        className={`text-xs font-mono px-3 py-1 rounded-full ${
+                          session.stage === 'done'
+                            ? 'bg-accent/10 text-accent'
+                            : 'bg-secondary/40 text-muted-foreground'
+                        }`}
+                      >
+                        {STAGE_LABELS[session.stage] || session.stage}
+                      </span>
+                      {session.stage !== 'done' && session.stage !== 'not_started' && (
+                        <p className="text-xs font-mono text-muted-foreground mt-1">
+                          {Math.round(session.percent)}%
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={(e) => handleDelete(e, session)}
+                      disabled={deletingId === session.session_id}
+                      aria-label="Delete session"
+                      className="p-2 rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
                     >
-                      {STAGE_LABELS[session.stage] || session.stage}
-                    </span>
-                    {session.stage !== 'done' && session.stage !== 'not_started' && (
-                      <p className="text-xs font-mono text-muted-foreground mt-1">
-                        {Math.round(session.percent)}%
-                      </p>
-                    )}
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                </motion.button>
+                </motion.div>
               ))}
             </div>
           )}
