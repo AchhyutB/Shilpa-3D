@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
 import Header from '../components/shared/header';
 import { Button } from '../components/ui/button';
@@ -27,6 +27,7 @@ export default function HistoryPage({ onNavigate, isLoggedIn, onLogout, username
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
 
   useEffect(() => {
     authService
@@ -44,13 +45,15 @@ export default function HistoryPage({ onNavigate, isLoggedIn, onLogout, username
     }
   };
 
-  const handleDelete = async (e, session) => {
+  const handleDelete = (e, session) => {
     e.stopPropagation(); // don't trigger openSession when clicking delete
+    setSessionToDelete(session);
+  };
 
-    const confirmed = window.confirm(
-      `Delete "${session.statue || 'this session'}"? This can't be undone.`
-    );
-    if (!confirmed) return;
+  const confirmDelete = async () => {
+    const session = sessionToDelete;
+    if (!session) return;
+    setSessionToDelete(null);
 
     const previousSessions = sessions;
     setDeletingId(session.session_id);
@@ -162,7 +165,7 @@ export default function HistoryPage({ onNavigate, isLoggedIn, onLogout, username
                       onClick={(e) => handleDelete(e, session)}
                       disabled={deletingId === session.session_id}
                       aria-label="Delete session"
-                      className="p-2 rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+                      className="p-2 rounded-full text-black hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -173,6 +176,49 @@ export default function HistoryPage({ onNavigate, isLoggedIn, onLogout, username
           )}
         </div>
       </main>
+
+      <AnimatePresence>
+        {sessionToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6"
+            onClick={() => setSessionToDelete(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card-foreground border border-border-cream rounded-2xl p-6 max-w-sm w-full space-y-5"
+            >
+              <div className="space-y-2">
+                <h3 className="font-serif text-lg text-background">Delete session?</h3>
+                <p className="text-sm font-mono text-muted">
+                  "{sessionToDelete.statue || 'This session'}" will be permanently removed. This can't be undone.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setSessionToDelete(null)}
+                  className="px-4 py-2 text-xs font-mono rounded-full text-muted-foreground hover:bg-secondary/40 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 text-xs font-mono rounded-full bg-red-500/90 text-white hover:bg-red-500 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
