@@ -1,28 +1,37 @@
 import multer from "multer";
-import fs from "fs";
+import fs from "fs/promises";
+import fsSync from "fs";
 import path from "path";
 import crypto from "crypto";
 
-export const assignSessionId = (req, res, next) => {
-  req.sessionId = crypto.randomUUID();
+export const assignSessionId = async (req, res, next) => {
+  try {
+    req.sessionId = crypto.randomUUID();
 
-  const sessionDir = path.join("server", "uploads", req.sessionId);
-  fs.mkdirSync(sessionDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(sessionDir, "owner.json"),
-    JSON.stringify({
-      owner: req.user?.username || null,
-      createdAt: new Date().toISOString(),
-    })
-  );
+    const sessionDir = path.join("server", "uploads", req.sessionId);
+    const imagesDir = path.join(sessionDir, "images");
 
-  next();
+    // create both dirs up front, once, so multer's destination callback
+    // below doesn't need to touch the filesystem per-file
+    await fs.mkdir(imagesDir, { recursive: true });
+    await fs.writeFile(
+      path.join(sessionDir, "owner.json"),
+      JSON.stringify({
+        owner: req.user?.username || null,
+        createdAt: new Date().toISOString(),
+      })
+    );
+
+    next();
+  } catch (err) {
+    next(err);
+  }
 };
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    // dir already created in assignSessionId — no sync fs call per file
     const dir = path.join("server", "uploads", req.sessionId, "images");
-    fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
   filename: (req, file, cb) => {
