@@ -44,7 +44,7 @@ export default function App() {
     let cancelled = false;
 
     authService
-      .me()
+      .getProfile()
       .then(({ user }) => {
         if (cancelled) return;
         if (!user) {

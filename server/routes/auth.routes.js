@@ -5,6 +5,10 @@ import {
   refreshController,
   logoutController,
   profileController,
+  updateProfileController,
+  uploadAvatarController,
+  removeAvatarController,
+  deleteAccountController,
 } from "../controllers/userController.js";
 import {
   authenticateToken,
@@ -13,7 +17,7 @@ import {
 } from "../auth/auth.js";
 import passport from "../auth/passport.js";
 import { getUser } from "../db/dbconnection.js";
-
+import avatarUpload from "../middleware/avatarupload.middleware.js";
 const router = Router();
 
 router.post("/register", registerController);
@@ -21,6 +25,10 @@ router.post("/login", loginController);
 router.post("/refreshtoken", refreshController);
 router.post("/logout", logoutController);
 router.get("/profile", authenticateToken, profileController);
+router.put("/profile", authenticateToken, updateProfileController);
+router.post("/profile/avatar", authenticateToken, avatarUpload.single("avatar"), uploadAvatarController);
+router.delete("/profile/avatar", authenticateToken, removeAvatarController);
+router.delete("/account", authenticateToken, deleteAccountController);
 
 // Google OAuth
 router.get(

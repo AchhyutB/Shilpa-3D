@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Upload, Trash2, X, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import Header from '@/components/shared/header';
-import { authService } from '@/services/authService'; // adjust path to your actual file
+import { authService } from "@/lib/authServices";
 
 const LANGUAGES = ['English', 'Nepali', 'Hindi', 'Spanish', 'French', 'German', 'Japanese', 'Chinese'];
 const COUNTRIES = ['United States', 'Nepal', 'India', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'Japan', 'Other'];
