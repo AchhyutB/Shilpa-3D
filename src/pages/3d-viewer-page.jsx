@@ -1,105 +1,87 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/shared/header';
-import { ChevronLeft, CheckCircle } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { ChevronLeft, CheckCircle, Loader2 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Splat } from '@react-three/drei';
+import { getJobModels, getJobStatus } from '@/lib/api';
 
-export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
+export default function ThreeDViewerPage({ isLoggedIn, onLogout }) {
+  const [model, setModel] = useState('gaussian'); // 'gaussian' | 'nerf'
+  const [pointSize, setPointSize] = useState(50);
+  const [opacity, setOpacity] = useState(80);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const containerRef = useRef(null);
-  const viewerRef = useRef(null);
-
+  const [models, setModels] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
   const navigate = useNavigate();
-  const location = useLocation();
-  const { sessionId, filename } = location.state || {};
+  const { jobId } = useParams(); // route must be /3d-viewer/:jobId
 
   useEffect(() => {
-    if (!sessionId || !filename) {
-      navigate('/results', { replace: true });
+    if (!jobId) {
+      setLoadError('No job ID found.');
       return;
     }
-    if (!containerRef.current) return;
 
     let cancelled = false;
-    const token = localStorage.getItem('accessToken');
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
-    const fileUrl = `${apiBase}/files/${sessionId}/${filename}`;
+    setLoadError(null);
 
-    const viewer = new GaussianSplats3D.Viewer({
-      cameraUp: [0, -1, 0],
-      initialCameraPosition: [0, 0, 3],
-      initialCameraLookAt: [0, 0, 0],
-      rootElement: containerRef.current,
-      sharedMemoryForWorkers: false,
-    });
-    viewerRef.current = viewer;
-
-    viewer
-      .addSplatScene(fileUrl, {
-        splatAlphaRemovalThreshold: 5,
-        showLoadingUI: false,
-        // fetch options so the auth token/cookie actually reach the backend
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      .then(() => {
+    async function load() {
+      try {
+        // Guard against landing here (e.g. a bookmark) before the job
+        // actually finished processing.
+        const status = await getJobStatus(jobId);
         if (cancelled) return;
-        viewer.start();
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error(err);
-          setError('Failed to load model');
-          setLoading(false);
+
+        if (status.status === 'failed') {
+          setLoadError('This job failed during processing.');
+          return;
         }
-      });
+
+        if (status.status !== 'complete') {
+          navigate(`/processing/${jobId}`);
+          return;
+        }
+
+        const data = await getJobModels(jobId);
+        if (!cancelled) setModels(data);
+      } catch (err) {
+        if (!cancelled) setLoadError('Could not load 3D models for this job.');
+      }
+    }
+
+    load();
 
     return () => {
       cancelled = true;
-      if (viewerRef.current) {
-        try {
-          viewerRef.current.dispose();
-        } catch (err) {
-          // Library's internal DOM cleanup can race with React's own cleanup
-          // (especially under React 18 Strict Mode's double-invoke in dev) —
-          // safe to ignore, the container itself still gets torn down correctly.
-        }
-        viewerRef.current = null;
-      }
     };
-  }, [sessionId, filename, navigate]);
+  }, [jobId, navigate, retryKey]);
+
+  const activeModel = models?.[model]; // { type: 'splat'|'video', url }
+  const isSplat = activeModel?.type === 'splat';
+  const isVideo = activeModel?.type === 'video';
 
   const handleDownload = () => {
-    if (!sessionId || !filename) return;
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
-    const token = localStorage.getItem('accessToken');
+    if (!activeModel?.url) return;
 
-    fetch(`${apiBase}/files/${sessionId}/${filename}`, {
-      credentials: 'include',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((res) => res.blob())
-      .then((blob) => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.click();
-        URL.revokeObjectURL(url);
-        setDownloadSuccess(true);
-        setTimeout(() => setDownloadSuccess(false), 3000);
-      });
+    const link = document.createElement('a');
+    link.href = activeModel.url;
+    link.download = `shilpa3d-${model}-model-${new Date().getTime()}${
+      isSplat ? '.splat' : '.mp4'
+    }`;
+    link.click();
+
+    setDownloadSuccess(true);
+    setTimeout(() => setDownloadSuccess(false), 3000);
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLogout={onLogout} username={username} />
+      <Header navigate={navigate} onLogout={onLogout} />
 
       {downloadSuccess && (
         <motion.div
@@ -119,7 +101,7 @@ export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4 }}
-            onClick={() => navigate('/results')}
+            onClick={() => navigate(`/results/${jobId}`)}
             className="flex items-center text-sm font-mono gap-2 text-secondary-foreground hover:text-accent transition-colors mb-8"
           >
             <ChevronLeft size={20} />
@@ -135,66 +117,148 @@ export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
             3D Viewer
           </motion.h1>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="col-span-1"
-            >
-              <div className="w-full h-75 sm:h-120 bg-border/40 border border-border/30 rounded-2xl overflow-hidden relative">
-                {loading && (
-                  <div className="absolute inset-0 flex items-center justify-center z-10 bg-border/40">
-                    <p className="text-sm text-secondary-foreground font-mono">Loading model…</p>
-                  </div>
-                )}
+          {loadError ? (
+            <div className="text-center space-y-3">
+              <p className="font-mono text-destructive">{loadError}</p>
+              <button
+                onClick={() => setRetryKey((k) => k + 1)}
+                className="underline text-sm font-mono text-muted-foreground hover:text-accent"
+              >
+                Try again
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                className="col-span-1"
+              >
+                <div className="w-full h-[300px] sm:h-[480px] bg-border/40 border border-border/30 rounded-2xl overflow-hidden relative">
+                  {!activeModel && (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Loader2 className="animate-spin text-muted-foreground" size={28} />
+                    </div>
+                  )}
 
-                {error && (
-                  <div className="absolute inset-0 flex items-center justify-center z-10 bg-border/40">
-                    <p className="text-sm text-red-500 font-mono px-8 text-center">{error}</p>
-                  </div>
-                )}
+                  {isSplat && (
+                    <Canvas
+                      camera={{ position: [0, 0, 5], fov: 50 }}
+                      style={{ opacity: opacity / 100 }}
+                      className="!bg-transparent"
+                    >
+                      <ambientLight intensity={1} />
+                      <Splat src={activeModel.url} scale={pointSize / 50} />
+                      <OrbitControls makeDefault />
+                    </Canvas>
+                  )}
 
-                {/* The library renders directly into this div */}
-                <div ref={containerRef} className="w-full h-full" />
-              </div>
-            </motion.div>
+                  {isVideo && (
+                    <video
+                      className="w-full h-full object-cover"
+                      style={{ opacity: opacity / 100 }}
+                      src={activeModel.url}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      controls
+                    />
+                  )}
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="space-y-6"
-            >
-              <div className="bg-background border-2 border-dashed border-border/60 rounded-2xl p-6 space-y-4">
-                <div className="space-y-2">
-                  <h3 className="font-mono text-foreground">Model</h3>
-                  <p className="text-2xl font-mono text-accent">GAUSSIAN</p>
+                  {activeModel && (
+                    <p className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs text-secondary-foreground font-mono pointer-events-none">
+                      {isSplat ? 'Drag-Scroll-Pan' : 'Pre-rendered orbit'}
+                    </p>
+                  )}
                 </div>
-                <p className="text-xs font-mono text-muted-foreground pt-4 border-t border-border/30">
-                  Drag to rotate, scroll to zoom, right-click drag to pan.
-                </p>
-              </div>
+              </motion.div>
 
-              <div className="flex gap-3 justify-end">
-                <Button
-                  variant="outline"
-                  className="flex-1 sm:flex-none sm:w-40 border-foreground! font-serif text-foreground hover:bg-secondary py-6 rounded-full"
-                  onClick={handleDownload}
-                  disabled={loading || !!error}
-                >
-                  Download
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 sm:flex-none sm:w-40 border-foreground! text-foreground font-serif hover:bg-secondary py-6 rounded-full"
-                  onClick={() => navigate('/home')}
-                >
-                  Home
-                </Button>
-              </div>
-            </motion.div>
-          </div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                className="space-y-6"
+              >
+                <div className="bg-background border border-2 border-dashed border-border/60 rounded-2xl p-6 space-y-4">
+                  <div className="space-y-2">
+                    <h3 className="font-mono text-foreground">Model</h3>
+                    <p className="text-2xl font-mono text-accent">
+                      {model === 'nerf' ? 'NeRF' : 'GAUSSIAN'}
+                    </p>
+                  </div>
+
+                  {/* Point size only affects the splat renderer */}
+                  {isSplat && (
+                    <div className="space-y-3 pt-4 border-t border-border/30">
+                      <div className="flex justify-between items-center">
+                        <label className="text-sm font-mono text-muted-foreground">
+                          Point Size
+                        </label>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={pointSize}
+                        onChange={(e) => setPointSize(Number(e.target.value))}
+                        className="w-full h-2 bg-secondary rounded-full appearance-none cursor-pointer accent-accent"
+                        style={{
+                          background: `linear-gradient(to right, #d4a574 0%, #d4a574 ${pointSize}%, #3a3328 ${pointSize}%, #3a3328 100%)`,
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-3 pt-4">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-mono text-muted-foreground">
+                        Opacity
+                      </label>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={opacity}
+                      onChange={(e) => setOpacity(Number(e.target.value))}
+                      className="w-full h-2 bg-secondary rounded-full appearance-none cursor-pointer accent-accent"
+                      style={{
+                        background: `linear-gradient(to right, #d4a574 0%, #d4a574 ${opacity}%, #3a3328 ${opacity}%, #3a3328 100%)`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 justify-end">
+                  <Button
+                    onClick={() => setModel(model === 'nerf' ? 'gaussian' : 'nerf')}
+                    className="flex-1 sm:flex-none sm:w-50 bg-accent border border-border-cream text-accent-foreground hover:bg-accent/90 px-8 py-6 text-sm font-medium font-serif rounded-full"
+                  >
+                    {model === 'nerf' ? 'Switch to Gaussian' : 'Switch to NeRF'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 sm:flex-none sm:w-40 !border-foreground font-serif text-foreground hover:bg-secondary py-6 rounded-full"
+                    onClick={handleDownload}
+                    disabled={!activeModel}
+                  >
+                    Download
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 sm:flex-none sm:w-40 !border-foreground text-foreground font-serif hover:bg-secondary py-6 rounded-full"
+                    onClick={() => navigate('/home')}
+                  >
+                    Home
+                  </Button>
+                </div>
+              </motion.div>
+            </div>
+          )}
         </div>
       </main>
     </div>

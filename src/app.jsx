@@ -1,167 +1,100 @@
-import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import axios from "axios";
-import { authService } from "./lib/authServices";
-import LandingPage from "./pages/landing-page";
-import LoginPage from "./pages/login-page";
-import SignUpPage from "./pages/signup-page";
-import HomePage from "./pages/home-page";
-import ProcessingPage from "./pages/processing-page";
-import ResultsPage from "./pages/results-page";
-import ThreeDViewerPage from "./pages/3d-viewer-page";
-import HistoryPage from "./pages/history-page";
-import OAuthPage from "./pages/oauth-page";
+import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+import LandingPage from './pages/landing-page';
+import LoginPage from './pages/login-page';
+import SignUpPage from './pages/signup-page';
+import HomePage from './pages/home-page';
+import ProcessingPage from './pages/processing-page';
+import ResultsPage from './pages/results-page';
+import ThreeDViewerPage from './pages/3d-viewer-page';
+import HistoryPage from './pages/history-page';
+import AccountSettingsPage from './pages/account-page';
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    !!localStorage.getItem("accessToken"),
-  );
-  const [username, setUsername] = useState(
-    localStorage.getItem("username") || "",
-  );
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-    setUsername(localStorage.getItem("username") || "");
-  };
-
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-    } catch {
-      // token might already be stale — clear local state regardless
-    }
-    setIsLoggedIn(false);
-    setUsername("");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("username");
-  };
-
-  // fetch profile on refresh or after Google OAuth
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    let cancelled = false;
-
-    authService
-      .me()
-      .then(({ user }) => {
-        if (cancelled) return;
-        if (!user) {
-          handleLogout();
-          return;
-        }
-        setUsername(user.username);
-        localStorage.setItem("username", user.username);
-      })
-      .catch(() => {
-        if (!cancelled) handleLogout();
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoggedIn]);
-
-  // global axios interceptor — auto logout on 401 (token expired or user deleted)
-  useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          setIsLoggedIn(false);
-          setUsername("");
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("username");
-        }
-        return Promise.reject(error);
-      },
-    );
-    return () => axios.interceptors.response.eject(interceptor);
-  }, []);
+  const handleLogin = () => setIsLoggedIn(true);
+  const handleLogout = () => setIsLoggedIn(false);
 
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public Pages */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-        <Route path="/signup" element={<SignUpPage onSignUp={handleLogin} />} />
+        <Route
+          path="/login"
+          element={<LoginPage onLogin={handleLogin} />}
+        />
+        <Route
+          path="/signup"
+          element={<SignUpPage onSignUp={handleLogin} />}
+        />
+
+        {/* Main Pages */}
         <Route
           path="/home"
           element={
-            isLoggedIn ? (
-              <HomePage
-                isLoggedIn={isLoggedIn}
-                onLogout={handleLogout}
-                username={username}
-              />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            <HomePage
+              isLoggedIn={isLoggedIn}
+              onLogout={handleLogout}
+            />
           }
         />
+
+        {/* Job Pages */}
         <Route
-          path="/processing"
+          path="/processing/:jobId"
           element={
-            isLoggedIn ? (
-              <ProcessingPage
-                isLoggedIn={isLoggedIn}
-                onLogout={handleLogout}
-                username={username}
-              />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            <ProcessingPage
+              isLoggedIn={isLoggedIn}
+              onLogout={handleLogout}
+            />
           }
         />
+
         <Route
-          path="/results"
+          path="/results/:jobId"
           element={
-            isLoggedIn ? (
-              <ResultsPage
-                isLoggedIn={isLoggedIn}
-                onLogout={handleLogout}
-                username={username}
-              />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            <ResultsPage
+              isLoggedIn={isLoggedIn}
+              onLogout={handleLogout}
+            />
           }
         />
+
         <Route
-          path="/3d-viewer"
+          path="/3d-viewer/:jobId"
           element={
-            isLoggedIn ? (
-              <ThreeDViewerPage
-                isLoggedIn={isLoggedIn}
-                onLogout={handleLogout}
-                username={username}
-              />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            <ThreeDViewerPage
+              isLoggedIn={isLoggedIn}
+              onLogout={handleLogout}
+            />
           }
         />
+
+        {/* Other Pages */}
         <Route
           path="/history"
           element={
-            isLoggedIn ? (
-              <HistoryPage
-                isLoggedIn={isLoggedIn}
-                onLogout={handleLogout}
-                username={username}
-              />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            <HistoryPage
+              isLoggedIn={isLoggedIn}
+              onLogout={handleLogout}
+            />
           }
         />
+
         <Route
-          path="/oauth"
+          path="/account"
           element={
-            <OAuthPage onLogin={handleLogin} setUsername={setUsername} />
+            <AccountSettingsPage
+              onLogout={handleLogout}
+            />
           }
         />
-        <Route path="*" element={<Navigate to="/" />} />
+
+        {/* Unknown Routes */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

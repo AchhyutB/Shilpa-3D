@@ -4,51 +4,98 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/shared/header';
-import { CheckCircle, ChevronLeft } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { authService } from '../lib/authServices';
+import { CheckCircle, ChevronLeft, Loader2 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { getJobResults, getJobStatus } from '@/lib/api';
 
-export default function ResultsPage({ isLoggedIn, onLogout, username }) {
+function PreviewBox({ result }) {
+  if (!result) {
+    return (
+      <div className="w-full aspect-[4/3] bg-secondary/40 border border-border/30 rounded-xl flex items-center justify-center">
+        <Loader2 className="animate-spin text-muted-foreground" size={24} />
+      </div>
+    );
+  }
+
+  if (result.previewType === 'video') {
+    return (
+      <video
+        className="w-full aspect-[4/3] bg-secondary/40 border border-border/30 rounded-xl object-cover"
+        src={result.previewUrl}
+        autoPlay
+        muted
+        loop
+        playsInline
+      />
+    );
+  }
+
+  // Falls back to a static image preview if previewType === 'image'
+  return (
+    <img
+      className="w-full aspect-[4/3] bg-secondary/40 border border-border/30 rounded-xl object-cover"
+      src={result.previewUrl}
+      alt={result.name}
+    />
+  );
+}
+
+export default function ResultsPage({ isLoggedIn, onLogout }) {
   const [exportSuccess, setExportSuccess] = useState(false);
-  const [manifest, setManifest] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [results, setResults] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
   const navigate = useNavigate();
-  const location = useLocation();
-  const sessionId = location.state?.sessionId;
+  const { jobId } = useParams(); // route must be /results/:jobId
 
   useEffect(() => {
-    if (!sessionId) {
-      navigate('/home', { replace: true });
+    if (!jobId) {
+      setLoadError('No job ID found.');
       return;
     }
 
     let cancelled = false;
+    setLoadError(null);
 
-    authService
-      .getResults(sessionId)
-      .then((data) => {
-        if (!cancelled) setManifest(data);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message || 'Results not available yet');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    async function load() {
+      try {
+        // Someone could land here via a bookmark or a stale link before
+        // the job is actually done — check first instead of assuming.
+        const status = await getJobStatus(jobId);
+        if (cancelled) return;
+
+        if (status.status === 'failed') {
+          setLoadError('This job failed during processing.');
+          return;
+        }
+
+        if (status.status !== 'complete') {
+          navigate(`/processing/${jobId}`);
+          return;
+        }
+
+        const data = await getJobResults(jobId);
+        if (!cancelled) setResults(data);
+      } catch (err) {
+        if (!cancelled) setLoadError('Could not load results for this job.');
+      }
+    }
+
+    load();
 
     return () => {
       cancelled = true;
     };
-  }, [sessionId, navigate]);
+  }, [jobId, navigate, retryKey]);
 
   const handleExportReport = () => {
-    if (!manifest) return;
+    if (!results) return;
 
     const reportData = {
       exportDate: new Date().toISOString(),
       project: 'Shilpa3D Reconstruction',
-      results: manifest,
+      jobId,
+      results,
     };
 
     const reportJson = JSON.stringify(reportData, null, 2);
@@ -56,7 +103,7 @@ export default function ResultsPage({ isLoggedIn, onLogout, username }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `shilpa3d-report-${Date.now()}.json`;
+    link.download = `shilpa3d-report-${jobId}-${new Date().getTime()}.json`;
     link.click();
     URL.revokeObjectURL(url);
 
@@ -64,21 +111,11 @@ export default function ResultsPage({ isLoggedIn, onLogout, username }) {
     setTimeout(() => setExportSuccess(false), 3000);
   };
 
-  const openViewer = () => {
-    if (!manifest?.gaussian_ply) return;
-    const filename = manifest.gaussian_ply.split(/[/\\]/).pop();
-    navigate('/3d-viewer', { state: { sessionId, filename } });
-  };
-
-  const hasNerf = manifest?.method === 'nerf' || manifest?.method === 'both';
-  const hasGaussian = manifest?.method === 'gaussian' || manifest?.method === 'both';
-
   return (
     <div className="min-h-screen bg-background">
-      <Header onNavigate={onNavigate => onNavigate} onLogout={onLogout} username={username} />
+      <Header navigate={navigate} onLogout={onLogout} />
 
       <main className="sm:h-[calc(100vh-9rem)] pt-22 pb-12">
-        {/* Back button */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 my-6 sm:my-8">
           <motion.button
             initial={{ opacity: 0, x: -20 }}
@@ -92,7 +129,6 @@ export default function ResultsPage({ isLoggedIn, onLogout, username }) {
           </motion.button>
         </div>
 
-        {/* Success notification */}
         {exportSuccess && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -106,95 +142,95 @@ export default function ResultsPage({ isLoggedIn, onLogout, username }) {
         )}
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-10 sm:space-y-16">
-
-          {loading && (
-            <p className="text-center font-mono text-muted-foreground">Loading results…</p>
-          )}
-
-          {!loading && error && (
-            <div className="text-center space-y-4">
-              <p className="font-mono text-red-500">{error}</p>
-              <Button
-                onClick={() => navigate('/home')}
-                className="bg-accent border border-border-cream text-accent-foreground hover:bg-accent/90 px-8 py-6 font-serif rounded-full"
+          {loadError ? (
+            <div className="text-center space-y-3">
+              <p className="font-mono text-destructive">{loadError}</p>
+              <button
+                onClick={() => setRetryKey((k) => k + 1)}
+                className="underline text-sm font-mono text-muted-foreground hover:text-accent"
               >
-                Back to Upload
-              </Button>
+                Try again
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-16 lg:gap-32">
+              {/* NeRF Output */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="space-y-4"
+              >
+                <h2 className="text-xl sm:text-2xl font-mono text-foreground">
+                  NeRF Output
+                </h2>
+
+                <PreviewBox result={results?.nerf} />
+
+                <div className="grid grid-cols-3 text-center text-xs sm:text-sm">
+                  <div className="text-accent font-mono">
+                    <p>PSNR {results?.nerf?.psnr ?? '--'}</p>
+                  </div>
+                  <div className="text-accent font-mono">
+                    <p>SSIM {results?.nerf?.ssim ?? '--'}</p>
+                  </div>
+                  <div className="text-foreground font-mono">
+                    <p>Time {results?.nerf?.processingTime ?? '--'}</p>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Gaussian Output */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="space-y-4"
+              >
+                <h2 className="text-xl sm:text-2xl font-mono text-foreground lg:text-right">
+                  Gaussian Output
+                </h2>
+
+                <PreviewBox result={results?.gaussian} />
+
+                <div className="grid grid-cols-3 text-center text-xs sm:text-sm">
+                  <div className="text-accent font-mono">
+                    <p>PSNR {results?.gaussian?.psnr ?? '--'}</p>
+                  </div>
+                  <div className="text-accent font-mono">
+                    <p>SSIM {results?.gaussian?.ssim ?? '--'}</p>
+                  </div>
+                  <div className="text-foreground font-mono">
+                    <p>Time {results?.gaussian?.processingTime ?? '--'}</p>
+                  </div>
+                </div>
+              </motion.div>
             </div>
           )}
 
-          {!loading && !error && manifest && (
-            <>
-              {/* Results Grid — stacks on mobile, side-by-side on lg */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-16 lg:gap-32">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mt-8 sm:mt-12"
+          >
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto font-serif !border-foreground text-foreground hover:bg-secondary px-8 py-6 rounded-full"
+              onClick={handleExportReport}
+              disabled={!results}
+            >
+              Export Report
+            </Button>
 
-                {/* NeRF Output */}
-                {hasNerf && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                    className="space-y-4"
-                  >
-                    <h2 className="text-xl sm:text-2xl font-mono text-foreground">
-                      NeRF Output
-                    </h2>
-
-                    <div className="w-full aspect-4/3 bg-secondary/40 border border-border/30 rounded-xl flex items-center justify-center">
-                      <p className="text-xs font-mono text-muted-foreground px-4 text-center">
-                        Renders available on disk — viewer for individual frames not built yet
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Gaussian Output */}
-                {hasGaussian && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                    className="space-y-4"
-                  >
-                    <h2 className="text-xl sm:text-2xl font-mono text-foreground lg:text-right">
-                      Gaussian Output
-                    </h2>
-
-                    <div className="w-full aspect-4/3 bg-secondary/40 border border-border/30 rounded-xl flex items-center justify-center">
-                      <p className="text-xs font-mono text-muted-foreground px-4 text-center">
-                        {manifest.gaussian_ply ? 'Point cloud ready' : 'Not generated'}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mt-8 sm:mt-12"
-              >
-                <Button
-                  variant="outline"
-                  className="w-full sm:w-auto font-serif border-foreground! text-foreground hover:bg-secondary px-8 py-6 rounded-full"
-                  onClick={handleExportReport}
-                >
-                  Export Report
-                </Button>
-
-                {hasGaussian && manifest.gaussian_ply && (
-                  <Button
-                    onClick={openViewer}
-                    className="w-full sm:w-auto bg-accent border border-border-cream text-accent-foreground hover:bg-accent/90 px-8 py-6 font-serif rounded-full"
-                  >
-                    Open 3D Viewer
-                  </Button>
-                )}
-              </motion.div>
-            </>
-          )}
+            <Button
+              onClick={() => navigate(`/3d-viewer/${jobId}`)}
+              className="w-full sm:w-auto bg-accent border border-border-cream text-accent-foreground hover:bg-accent/90 px-8 py-6 font-serif rounded-full"
+              disabled={!results}
+            >
+              Open 3D Viewer
+            </Button>
+          </motion.div>
         </div>
       </main>
     </div>

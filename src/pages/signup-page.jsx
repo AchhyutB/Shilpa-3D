@@ -1,112 +1,83 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Eye, EyeOff } from "lucide-react";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { useNavigate } from "react-router-dom";
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Eye, EyeOff } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { useNavigate } from 'react-router-dom';
 import { FaGoogle } from "react-icons/fa";
-import { authService } from "../lib/authServices";
 
-// Returns a 0–4 score based on length + character variety.
-// No single rule is "required" — this just informs the strength label.
-function getPasswordScore(password) {
-  if (!password) return 0;
-
-  let score = 0;
-  if (password.length >= 6) score++;
-  if (password.length >= 10) score++;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) score++;
-
-  return score; // 0–4
-}
-
-function getPasswordStrength(password) {
-  const score = getPasswordScore(password);
-  if (score <= 1) return "Weak";
-  if (score <= 2) return "Medium";
-  return "Strong";
+// Simple password validation rules — tweak thresholds as you like
+function validatePassword(password) {
+  return {
+    minLength: password.length >= 8,
+    hasUpperCase: /[A-Z]/.test(password),
+    hasLowerCase: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecialChar: /[^A-Za-z0-9]/.test(password),
+  };
 }
 
 export default function SignUpPage({ onNavigate, onSignUp }) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
 
-  const passwordStrength = getPasswordStrength(formData.password);
+  // Must be computed before passwordStrength since it depends on it
+  const passwordValidation = validatePassword(formData.password);
+
+  // score = how many of the 5 rules pass
+  const passwordScore = Object.values(passwordValidation).filter(Boolean).length;
+
+  const passwordStrength =
+    passwordScore <= 2 ? "Weak" : passwordScore <= 4 ? "Medium" : "Strong";
 
   const strengthColor =
     passwordStrength === "Weak"
       ? "bg-red-500"
       : passwordStrength === "Medium"
-        ? "bg-orange-400"
-        : "bg-green-500";
+      ? "bg-orange-400"
+      : "bg-green-500";
 
   const strengthWidth =
     passwordStrength === "Weak"
       ? "w-1/3"
       : passwordStrength === "Medium"
-        ? "w-2/3"
-        : "w-full";
+      ? "w-2/3"
+      : "w-full";
 
-  const passwordsMatch =
-    formData.password === formData.confirmPassword && formData.password !== "";
+  const isPasswordValid = Object.values(passwordValidation).every((v) => v === true);
+  const passwordsMatch = formData.password === formData.confirmPassword && formData.password !== '';
+  const isFormValid =
+    formData.name.trim() !== '' &&
+    formData.email.includes('@') &&
+    isPasswordValid &&
+    passwordsMatch;
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-
-    if (!formData.name.trim()) {
-      setError("Enter your name");
-      return;
-    }
-    if (!formData.email.includes("@")) {
-      setError("Enter a valid email");
-      return;
-    }
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-    if (!passwordsMatch) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    try {
-      setError("");
-      setSubmitting(true);
-      await authService.signup(
-        formData.name,
-        formData.email,
-        formData.password,
-      );
-      onSignUp();
-      navigate("/login"); // no auto-login on register — backend doesn't issue tokens on /register
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
+    if (isFormValid) onSignUp();
   };
 
+  // Redirects to Google's OAuth consent screen.
+  // Replace this URL with your real backend OAuth endpoint
+  // (e.g. `${API_BASE_URL}/api/auth/google`) once your server route exists.
   const handleGoogleSignUp = () => {
-    window.location.href = authService.googleLoginUrl;
+    window.location.href = "https://accounts.google.com/o/oauth2/v2/auth";
   };
 
   const handleLoginClick = () => {
     if (onNavigate) {
-      onNavigate("login");
+      onNavigate('login');
     } else {
-      navigate("/login");
+      navigate('/login');
     }
   };
 
@@ -119,12 +90,13 @@ export default function SignUpPage({ onNavigate, onSignUp }) {
         className="w-full max-w-md"
       >
         <div className="bg-card-foreground border border-border/30 rounded-2xl p-5 space-y-3">
+
           {/* Logo */}
           <div className="flex justify-center">
             <img
               src="/assets/main.png"
               alt="Shilpa3D Logo"
-              className="w-18 h-auto object-contain"
+              className="w-[72px] h-auto object-contain"
             />
           </div>
 
@@ -134,36 +106,31 @@ export default function SignUpPage({ onNavigate, onSignUp }) {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-2.5" noValidate>
+          <form onSubmit={handleSubmit} className="space-y-2.5">
+
             {/* Name */}
             <div className="space-y-1">
-              <label className="text-xs text-muted font-medium font-mono">
-                Name*
-              </label>
+              <label className="text-xs text-muted font-medium font-mono">Name*</label>
               <Input
                 type="text"
                 placeholder="Enter your name"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="bg-secondary-foreground! border-2 border-border h-14 px-5 rounded-lg mt-0.5 text-secondary placeholder:text-secondary/40 font-mono text-sm"
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="!bg-secondary-foreground border-2 border-border h-14 px-5 rounded-lg mt-0.5 text-secondary placeholder:text-secondary/40 font-mono text-sm"
+                required
               />
             </div>
 
             {/* Email */}
             <div className="space-y-1">
-              <label className="text-xs text-muted font-medium font-mono">
-                Email*
-              </label>
+              <label className="text-xs text-muted font-medium font-mono">Email*</label>
               <Input
                 type="email"
                 placeholder="Enter your email"
                 value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                className="bg-secondary-foreground! border-2 border-border h-14 px-5 rounded-lg mt-0.5 text-secondary placeholder:text-secondary/40 font-mono text-sm"
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="!bg-secondary-foreground border-2 border-border h-14 px-5 rounded-lg mt-0.5 text-secondary placeholder:text-secondary/40 font-mono text-sm"
+                required
               />
             </div>
 
@@ -184,7 +151,8 @@ export default function SignUpPage({ onNavigate, onSignUp }) {
                       password: e.target.value,
                     })
                   }
-                  className="bg-secondary-foreground! border-2 border-border h-14 px-5 pr-12 rounded-lg text-secondary placeholder:text-secondary/40 font-mono text-sm"
+                  className="!bg-secondary-foreground border-2 border-border h-14 px-5 pr-12 rounded-lg text-secondary placeholder:text-secondary/40 font-mono text-sm"
+                  required
                 />
 
                 <button
@@ -192,7 +160,11 @@ export default function SignUpPage({ onNavigate, onSignUp }) {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-3 flex items-center text-muted hover:text-secondary"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? (
+                    <EyeOff size={16} />
+                  ) : (
+                    <Eye size={16} />
+                  )}
                 </button>
               </div>
 
@@ -209,8 +181,8 @@ export default function SignUpPage({ onNavigate, onSignUp }) {
                       passwordStrength === "Weak"
                         ? "text-red-500"
                         : passwordStrength === "Medium"
-                          ? "text-orange-400"
-                          : "text-green-500"
+                        ? "text-orange-400"
+                        : "text-green-500"
                     }`}
                   >
                     Password Strength: {passwordStrength}
@@ -235,16 +207,19 @@ export default function SignUpPage({ onNavigate, onSignUp }) {
                       confirmPassword: e.target.value,
                     })
                   }
-                  className={`bg-secondary-foreground! border-2 h-14 px-5 pr-12 rounded-lg mt-0.5 text-secondary placeholder:text-secondary/40 font-mono text-sm ${
+                  className={`!bg-secondary-foreground border-2 h-14 px-5 pr-12 rounded-lg mt-0.5 text-secondary placeholder:text-secondary/40 font-mono text-sm ${
                     formData.confirmPassword && !passwordsMatch
                       ? "border-red-500"
                       : "border-border"
                   }`}
+                  required
                 />
 
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  onClick={() =>
+                    setShowConfirmPassword(!showConfirmPassword)
+                  }
                   className="absolute inset-y-0 right-3 flex items-center text-muted hover:text-secondary"
                 >
                   {showConfirmPassword ? (
@@ -262,20 +237,18 @@ export default function SignUpPage({ onNavigate, onSignUp }) {
               )}
             </div>
 
-            {error && (
-              <p className="text-[11px] text-red-500 text-center font-mono">
-                {error}
-              </p>
-            )}
-
             {/* Submit */}
             <div className="flex justify-center pt-1">
               <Button
                 type="submit"
-                disabled={submitting}
-                className="w-48 h-14 text-sm rounded-full font-serif transition-all duration-300 bg-accent text-background hover:bg-accent/90 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {submitting ? "Signing up…" : "Sign Up"}
+                disabled={!isFormValid}
+                className={`w-48 h-14 text-sm rounded-full font-serif transition-all duration-300 ${
+                isFormValid
+                  ? "bg-accent text-background hover:bg-accent/90 cursor-pointer"
+                  : "bg-accent/70 text-background/80 cursor-not-allowed"
+              }`}
+                            >
+                Sign Up
               </Button>
             </div>
           </form>
@@ -286,9 +259,7 @@ export default function SignUpPage({ onNavigate, onSignUp }) {
               <div className="w-full border-t border-border/30" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-card-foreground text-muted font-mono">
-                Or login with
-              </span>
+              <span className="px-2 bg-card-foreground text-muted font-mono">Or login with</span>
             </div>
           </div>
 
@@ -297,7 +268,7 @@ export default function SignUpPage({ onNavigate, onSignUp }) {
             <Button
               variant="outline"
               type="button"
-              className="w-full h-14 rounded-lg border-2 bg-card-foreground! border-border! text-background! hover:bg-secondary transition-all font-medium gap-2 text-sm"
+              className="w-full h-14 rounded-lg border-2 !bg-card-foreground !border-border !text-background hover:bg-secondary transition-all font-medium gap-2 text-sm"
               onClick={handleGoogleSignUp}
             >
               <FaGoogle className="h-4 w-4" />
@@ -307,7 +278,7 @@ export default function SignUpPage({ onNavigate, onSignUp }) {
 
           {/* Login link */}
           <div className="text-center text-xs text-muted font-mono">
-            Already have an account?{" "}
+            Already have an account?{' '}
             <Button
               variant="link"
               type="button"
