@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import axios from "axios";
 
@@ -29,54 +29,31 @@ export default function App() {
   );
 
   const [avatar, setAvatar] = useState(
-    localStorage.getItem("avatar") || null
+    localStorage.getItem("avatar") || ""
   );
 
-  // --------------------------------------------------
+  // ==========================================
   // LOGIN
-  // --------------------------------------------------
+  // ==========================================
 
   const handleLogin = () => {
     setIsLoggedIn(true);
 
     setUsername(localStorage.getItem("username") || "");
     setDisplayName(localStorage.getItem("displayName") || "");
-    setAvatar(localStorage.getItem("avatar") || null);
+    setAvatar(localStorage.getItem("avatar") || "");
   };
 
-  // --------------------------------------------------
-  // LOGOUT
-  // --------------------------------------------------
+  // ==========================================
+  // PROFILE UPDATE
+  // ==========================================
 
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-    } catch {
-      // Token might already be stale.
-      // Clear local state regardless.
-    }
-
-    setIsLoggedIn(false);
-    setUsername("");
-    setDisplayName("");
-    setAvatar(null);
-
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("username");
-    localStorage.removeItem("displayName");
-    localStorage.removeItem("avatar");
-  };
-
-  // --------------------------------------------------
-  // UPDATE PROFILE STATE
-  // --------------------------------------------------
-
-  const handleProfileChange = (user) => {
+  const handleProfileUpdate = (user) => {
     if (!user) return;
 
     const newUsername = user.username || "";
     const newDisplayName = user.name || "";
-    const newAvatar = user.avatar_url || null;
+    const newAvatar = user.avatar_url || user.avatar || "";
 
     setUsername(newUsername);
     setDisplayName(newDisplayName);
@@ -92,9 +69,32 @@ export default function App() {
     }
   };
 
-  // --------------------------------------------------
-  // FETCH PROFILE ON REFRESH / GOOGLE OAUTH
-  // --------------------------------------------------
+  // ==========================================
+  // LOGOUT
+  // ==========================================
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // Token may already be expired.
+      // Clear local state regardless.
+    }
+
+    setIsLoggedIn(false);
+    setUsername("");
+    setDisplayName("");
+    setAvatar("");
+
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("username");
+    localStorage.removeItem("displayName");
+    localStorage.removeItem("avatar");
+  };
+
+  // ==========================================
+  // FETCH PROFILE
+  // ==========================================
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -111,7 +111,7 @@ export default function App() {
           return;
         }
 
-        handleProfileChange(user);
+        handleProfileUpdate(user);
       })
       .catch(() => {
         if (!cancelled) {
@@ -124,9 +124,9 @@ export default function App() {
     };
   }, [isLoggedIn]);
 
-  // --------------------------------------------------
+  // ==========================================
   // GLOBAL AXIOS 401 INTERCEPTOR
-  // --------------------------------------------------
+  // ==========================================
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
@@ -137,7 +137,7 @@ export default function App() {
           setIsLoggedIn(false);
           setUsername("");
           setDisplayName("");
-          setAvatar(null);
+          setAvatar("");
 
           localStorage.removeItem("accessToken");
           localStorage.removeItem("username");
@@ -154,45 +154,37 @@ export default function App() {
     };
   }, []);
 
-  // --------------------------------------------------
-  // COMMON HEADER PROPS
-  // --------------------------------------------------
-
-  const headerProps = {
-    username,
-    displayName,
-    avatar,
-    onLogout: handleLogout,
-  };
-
   return (
     <BrowserRouter>
       <Routes>
 
         {/* PUBLIC */}
-        <Route path="/" element={<LandingPage />} />
+
+        <Route
+          path="/"
+          element={<LandingPage />}
+        />
 
         <Route
           path="/login"
-          element={<LoginPage onLogin={handleLogin} />}
+          element={
+            <LoginPage
+              onLogin={handleLogin}
+            />
+          }
         />
 
         <Route
           path="/signup"
-          element={<SignUpPage onSignUp={handleLogin} />}
-        />
-
-        <Route
-          path="/oauth"
           element={
-            <OAuthPage
-              onLogin={handleLogin}
-              setUsername={setUsername}
+            <SignUpPage
+              onSignUp={handleLogin}
             />
           }
         />
 
         {/* HOME */}
+
         <Route
           path="/home"
           element={
@@ -211,6 +203,7 @@ export default function App() {
         />
 
         {/* PROCESSING */}
+
         <Route
           path="/processing"
           element={
@@ -229,6 +222,7 @@ export default function App() {
         />
 
         {/* RESULTS */}
+
         <Route
           path="/results"
           element={
@@ -247,6 +241,7 @@ export default function App() {
         />
 
         {/* 3D VIEWER */}
+
         <Route
           path="/3d-viewer"
           element={
@@ -265,6 +260,7 @@ export default function App() {
         />
 
         {/* HISTORY */}
+
         <Route
           path="/history"
           element={
@@ -282,7 +278,8 @@ export default function App() {
           }
         />
 
-        {/* ACCOUNT SETTINGS */}
+        {/* ACCOUNT */}
+
         <Route
           path="/account"
           element={
@@ -292,7 +289,7 @@ export default function App() {
                 username={username}
                 displayName={displayName}
                 avatar={avatar}
-                onProfileChange={handleProfileChange}
+                onProfileUpdate={handleProfileUpdate}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -300,7 +297,20 @@ export default function App() {
           }
         />
 
+        {/* GOOGLE OAUTH */}
+
+        <Route
+          path="/oauth"
+          element={
+            <OAuthPage
+              onLogin={handleLogin}
+              setUsername={setUsername}
+            />
+          }
+        />
+
         {/* FALLBACK */}
+
         <Route
           path="*"
           element={<Navigate to="/" replace />}
