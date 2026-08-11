@@ -31,6 +31,30 @@ const createUserModel = (sequelize) => {
       allowNull: false,
       defaultValue: "local",
     },
+    name: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    language: {
+      type: DataTypes.STRING,
+      defaultValue: "English",
+    },
+    country: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    quality: {
+      type: DataTypes.STRING,
+      defaultValue: "Standard",
+    },
+    default_reconstruction: {
+      type: DataTypes.STRING,
+      defaultValue: "Gaussian Splat",
+    },
+    avatar_filename: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   });
   return User;
 };

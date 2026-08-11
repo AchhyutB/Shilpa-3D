@@ -1,26 +1,37 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Upload, Trash2, X, AlertTriangle, Check } from 'lucide-react';
+import { Pencil, Upload, Trash2, X, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import Header from '@/components/shared/header';
-
+import { authService } from '@/services/authService'; // adjust path to your actual file
 
 const LANGUAGES = ['English', 'Nepali', 'Hindi', 'Spanish', 'French', 'German', 'Japanese', 'Chinese'];
 const COUNTRIES = ['United States', 'Nepal', 'India', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'Japan', 'Other'];
 const QUALITIES = ['Low', 'Standard', 'High'];
 const RECONSTRUCTIONS = ['Gaussian Splat', 'NeRF'];
 
-const DEFAULT_PROFILE = {
+const EMPTY_PROFILE = {
   avatar: null,
-  name: 'Morty Smith',
+  name: '',
   language: 'English',
   country: 'United States',
   quality: 'Standard',
   reconstruction: 'Gaussian Splat',
 };
+
+// backend uses default_reconstruction / avatar_url — map to the form's shape
+function fromServerUser(user) {
+  return {
+    avatar: user.avatar_url || null,
+    name: user.name || '',
+    language: user.language || 'English',
+    country: user.country || 'United States',
+    quality: user.quality || 'Standard',
+    reconstruction: user.default_reconstruction || 'Gaussian Splat',
+  };
+}
 
 function FieldLabel({ children }) {
   return (
@@ -75,16 +86,18 @@ function ModalShell({ onClose, children, width = 'max-w-sm' }) {
   );
 }
 
-function AvatarUploadModal({ currentAvatar, onClose, onSave }) {
+function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
   const [preview, setPreview] = useState(currentAvatar);
+  const [file, setFile] = useState(null);
   const [zoom, setZoom] = useState(1);
   const fileRef = useRef(null);
 
-  const handleFile = (file) => {
-    if (!file || !file.type.startsWith('image/')) return;
+  const handleFile = (f) => {
+    if (!f || !f.type.startsWith('image/')) return;
+    setFile(f);
     const reader = new FileReader();
     reader.onload = (e) => setPreview(e.target.result);
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(f);
   };
 
   return (
@@ -156,14 +169,15 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave }) {
         </Button>
         <Button
           type="button"
-          disabled={!preview}
-          onClick={() => onSave(preview, zoom)}
-          className={`flex-1 h-12 rounded-full font-serif ${
-            preview
+          disabled={!file || saving}
+          onClick={() => onSave(file)}
+          className={`flex-1 h-12 rounded-full font-serif flex items-center justify-center gap-2 ${
+            file && !saving
               ? 'bg-[#D89A4A] text-[#1F0F0B] hover:bg-[#D89A4A]/90'
               : 'bg-[#D89A4A]/50 text-[#1F0F0B]/60 cursor-not-allowed'
           }`}
         >
+          {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           Save photo
         </Button>
       </div>
@@ -171,7 +185,7 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave }) {
   );
 }
 
-function ConfirmModal({ title, description, confirmLabel, danger, onCancel, onConfirm }) {
+function ConfirmModal({ title, description, confirmLabel, danger, onCancel, onConfirm, loading }) {
   return (
     <ModalShell onClose={onCancel} width="max-w-md">
       <div className="flex items-start gap-3 mb-2">
@@ -194,13 +208,15 @@ function ConfirmModal({ title, description, confirmLabel, danger, onCancel, onCo
         </Button>
         <Button
           type="button"
+          disabled={loading}
           onClick={onConfirm}
-          className={`flex-1 h-12 rounded-full font-serif ${
+          className={`flex-1 h-12 rounded-full font-serif flex items-center justify-center gap-2 ${
             danger
               ? 'bg-[#B8463B] text-white hover:bg-[#B8463B]/90'
               : 'bg-[#D89A4A] text-[#1F0F0B] hover:bg-[#D89A4A]/90'
           }`}
         >
+          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
           {confirmLabel}
         </Button>
       </div>
@@ -211,17 +227,44 @@ function ConfirmModal({ title, description, confirmLabel, danger, onCancel, onCo
 export default function AccountSettingsPage({ onLogout }) {
   const navigate = useNavigate();
 
-  const [saved, setSaved] = useState(DEFAULT_PROFILE);
-  const [form, setForm] = useState(DEFAULT_PROFILE);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  const [saved, setSaved] = useState(EMPTY_PROFILE);
+  const [form, setForm] = useState(EMPTY_PROFILE);
 
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [avatarSaving, setAvatarSaving] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [removingAvatar, setRemovingAvatar] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [editingName, setEditingName] = useState(false);
   const nameInputRef = useRef(null);
 
   const [savedToast, setSavedToast] = useState(false);
+
+  // Load the real profile from Postgres on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { user } = await authService.getProfile();
+        if (cancelled) return;
+        const mapped = fromServerUser(user);
+        setSaved(mapped);
+        setForm(mapped);
+      } catch (err) {
+        if (!cancelled) setLoadError(err.message || 'Failed to load profile');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (editingName) nameInputRef.current?.focus();
@@ -231,22 +274,93 @@ export default function AccountSettingsPage({ onLogout }) {
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
-  const handleSaveChanges = () => {
-    setSaved(form);
-    setSavedToast(true);
-    setTimeout(() => setSavedToast(false), 2200);
+  const handleSaveChanges = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const { user } = await authService.updateProfile({
+        name: form.name,
+        language: form.language,
+        country: form.country,
+        quality: form.quality,
+        default_reconstruction: form.reconstruction,
+      });
+      const mapped = fromServerUser(user);
+      setSaved(mapped);
+      setForm(mapped);
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 2200);
+    } catch (err) {
+      setSaveError(err.message || 'Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setForm(saved);
     setEditingName(false);
+    setSaveError(null);
   };
 
-  const handleDeleteAccount = () => {
-    setShowDeleteConfirm(false);
-    onLogout?.();
-    navigate('/');
+  const handleAvatarSave = async (file) => {
+    setAvatarSaving(true);
+    try {
+      const { user } = await authService.uploadAvatar(file);
+      const mapped = fromServerUser(user);
+      setSaved(mapped);
+      setForm(mapped);
+      setShowAvatarModal(false);
+    } catch (err) {
+      setSaveError(err.message || 'Failed to upload avatar');
+    } finally {
+      setAvatarSaving(false);
+    }
   };
+
+  const handleRemoveAvatar = async () => {
+    setRemovingAvatar(true);
+    try {
+      const { user } = await authService.removeAvatar();
+      const mapped = fromServerUser(user);
+      setSaved(mapped);
+      setForm(mapped);
+      setShowRemoveConfirm(false);
+    } catch (err) {
+      setSaveError(err.message || 'Failed to remove avatar');
+    } finally {
+      setRemovingAvatar(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await authService.deleteAccount();
+      setShowDeleteConfirm(false);
+      onLogout?.();
+      navigate('/');
+    } catch (err) {
+      setSaveError(err.message || 'Failed to delete account');
+      setDeleting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#F6EFE8]">
+        <Loader2 className="w-6 h-6 animate-spin text-[#D89A4A]" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#F6EFE8] font-mono text-sm text-[#B8463B]">
+        {loadError}
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen overflow-hidden bg-[#F6EFE8]">
@@ -259,6 +373,12 @@ export default function AccountSettingsPage({ onLogout }) {
         className="h-full max-w-2xl mx-auto px-6 pt-24 pb-6 flex flex-col justify-center overflow-hidden"
       >
         <h1 className="text-3xl font-serif text-[#1F0F0B] mb-6">Account Settings</h1>
+
+        {saveError && (
+          <div className="mb-4 text-sm font-mono text-[#B8463B] bg-[#B8463B]/10 border border-[#B8463B]/30 rounded-xl px-4 py-2">
+            {saveError}
+          </div>
+        )}
 
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#E3D5C7] bg-linear-to-br from-[#4E9DDE] via-[#1F0F0B] to-[#4EDE8E] flex items-center justify-center shrink-0">
@@ -337,19 +457,20 @@ export default function AccountSettingsPage({ onLogout }) {
           <div className="flex items-center gap-3">
             <Button
               type="button"
-              disabled={!isDirty}
+              disabled={!isDirty || saving}
               onClick={handleSaveChanges}
-              className={`h-12 px-8 rounded-full font-serif ${
-                isDirty
+              className={`h-12 px-8 rounded-full font-serif flex items-center gap-2 ${
+                isDirty && !saving
                   ? 'bg-[#D89A4A] text-[#1F0F0B] hover:bg-[#D89A4A]/90 cursor-pointer'
                   : 'bg-[#D89A4A]/50 text-[#1F0F0B]/60 cursor-not-allowed'
               }`}
             >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               Save Changes
             </Button>
             <Button
               type="button"
-              disabled={!isDirty}
+              disabled={!isDirty || saving}
               onClick={handleCancel}
               className={`h-12 px-8 rounded-full font-serif bg-transparent border-2 ${
                 isDirty
@@ -389,11 +510,9 @@ export default function AccountSettingsPage({ onLogout }) {
         {showAvatarModal && (
           <AvatarUploadModal
             currentAvatar={form.avatar}
+            saving={avatarSaving}
             onClose={() => setShowAvatarModal(false)}
-            onSave={(preview) => {
-              update('avatar', preview);
-              setShowAvatarModal(false);
-            }}
+            onSave={handleAvatarSave}
           />
         )}
 
@@ -403,11 +522,9 @@ export default function AccountSettingsPage({ onLogout }) {
             description="You can always upload a new one later."
             confirmLabel="Remove"
             danger
+            loading={removingAvatar}
             onCancel={() => setShowRemoveConfirm(false)}
-            onConfirm={() => {
-              update('avatar', null);
-              setShowRemoveConfirm(false);
-            }}
+            onConfirm={handleRemoveAvatar}
           />
         )}
 
@@ -417,6 +534,7 @@ export default function AccountSettingsPage({ onLogout }) {
             description="This permanently removes your account and all your reconstructions. This can't be undone."
             confirmLabel="Delete account"
             danger
+            loading={deleting}
             onCancel={() => setShowDeleteConfirm(false)}
             onConfirm={handleDeleteAccount}
           />
