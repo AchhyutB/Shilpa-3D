@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { useNavigate } from "react-router-dom";
+
 import {
   Pencil,
   Upload,
@@ -12,6 +13,7 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
+
 import Header from "@/components/shared/header";
 import { authService } from "@/lib/authServices";
 
@@ -25,6 +27,7 @@ const LANGUAGES = [
   "Japanese",
   "Chinese",
 ];
+
 const COUNTRIES = [
   "United States",
   "Nepal",
@@ -36,8 +39,13 @@ const COUNTRIES = [
   "Japan",
   "Other",
 ];
+
 const QUALITIES = ["Low", "Standard", "High"];
-const RECONSTRUCTIONS = ["Gaussian Splat", "NeRF"];
+
+const RECONSTRUCTIONS = [
+  "Gaussian Splat",
+  "NeRF",
+];
 
 const EMPTY_PROFILE = {
   avatar: null,
@@ -48,17 +56,25 @@ const EMPTY_PROFILE = {
   reconstruction: "Gaussian Splat",
 };
 
-// backend uses default_reconstruction / avatar_url — map to the form's shape
+// --------------------------------------------------
+// SERVER USER -> FORM PROFILE
+// --------------------------------------------------
+
 function fromServerUser(user) {
   return {
-    avatar: user.avatar_url || null,
-    name: user.name || "",
-    language: user.language || "English",
-    country: user.country || "United States",
-    quality: user.quality || "Standard",
-    reconstruction: user.default_reconstruction || "Gaussian Splat",
+    avatar: user?.avatar_url || null,
+    name: user?.name || "",
+    language: user?.language || "English",
+    country: user?.country || "United States",
+    quality: user?.quality || "Standard",
+    reconstruction:
+      user?.default_reconstruction || "Gaussian Splat",
   };
 }
+
+// --------------------------------------------------
+// FIELD LABEL
+// --------------------------------------------------
 
 function FieldLabel({ children }) {
   return (
@@ -68,7 +84,15 @@ function FieldLabel({ children }) {
   );
 }
 
-function SelectField({ value, onChange, options }) {
+// --------------------------------------------------
+// SELECT FIELD
+// --------------------------------------------------
+
+function SelectField({
+  value,
+  onChange,
+  options,
+}) {
   return (
     <div className="relative">
       <select
@@ -76,12 +100,16 @@ function SelectField({ value, onChange, options }) {
         onChange={(e) => onChange(e.target.value)}
         className="w-full appearance-none bg-white border-2 border-[#E3D5C7] h-12 px-5 pr-10 rounded-xl text-[#1F0F0B] font-mono text-sm cursor-pointer focus:outline-none focus:border-[#D89A4A] transition-colors"
       >
-        {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
+        {options.map((option) => (
+          <option
+            key={option}
+            value={option}
+          >
+            {option}
           </option>
         ))}
       </select>
+
       <svg
         className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6E6258]"
         viewBox="0 0 24 24"
@@ -89,13 +117,25 @@ function SelectField({ value, onChange, options }) {
         stroke="currentColor"
         strokeWidth="2"
       >
-        <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d="M6 9l6 6 6-6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     </div>
   );
 }
 
-function ModalShell({ onClose, children, width = "max-w-sm" }) {
+// --------------------------------------------------
+// MODAL SHELL
+// --------------------------------------------------
+
+function ModalShell({
+  onClose,
+  children,
+  width = "max-w-sm",
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -105,9 +145,21 @@ function ModalShell({ onClose, children, width = "max-w-sm" }) {
       onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.94, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 12 }}
+        initial={{
+          opacity: 0,
+          scale: 0.94,
+          y: 12,
+        }}
+        animate={{
+          opacity: 1,
+          scale: 1,
+          y: 0,
+        }}
+        exit={{
+          opacity: 0,
+          scale: 0.94,
+          y: 12,
+        }}
         transition={{ duration: 0.18 }}
         onClick={(e) => e.stopPropagation()}
         className={`w-full ${width} bg-[#F6EFE8] border border-[#E3D5C7] rounded-2xl p-6 relative`}
@@ -118,18 +170,39 @@ function ModalShell({ onClose, children, width = "max-w-sm" }) {
   );
 }
 
-function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
-  const [preview, setPreview] = useState(currentAvatar);
+// --------------------------------------------------
+// AVATAR UPLOAD MODAL
+// --------------------------------------------------
+
+function AvatarUploadModal({
+  currentAvatar,
+  onClose,
+  onSave,
+  saving,
+}) {
+  const [preview, setPreview] =
+    useState(currentAvatar);
+
   const [file, setFile] = useState(null);
+
   const [zoom, setZoom] = useState(1);
+
   const fileRef = useRef(null);
 
-  const handleFile = (f) => {
-    if (!f || !f.type.startsWith("image/")) return;
-    setFile(f);
+  const handleFile = (file) => {
+    if (!file || !file.type.startsWith("image/")) {
+      return;
+    }
+
+    setFile(file);
+
     const reader = new FileReader();
-    reader.onload = (e) => setPreview(e.target.result);
-    reader.readAsDataURL(f);
+
+    reader.onload = (event) => {
+      setPreview(event.target.result);
+    };
+
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -141,61 +214,85 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
         <X className="w-5 h-5" />
       </button>
 
-      <h2 className="text-2xl font-serif text-[#1F0F0B] mb-1">Update photo</h2>
+      <h2 className="text-2xl font-serif text-[#1F0F0B] mb-1">
+        Update photo
+      </h2>
+
       <p className="text-xs font-mono text-[#6E6258] mb-6">
         Fits and crops to a circle automatically.
       </p>
 
       <div className="flex flex-col items-center gap-5">
+
+        {/* Preview */}
         <div className="w-40 h-40 rounded-full overflow-hidden border-2 border-[#E3D5C7] bg-white flex items-center justify-center">
           {preview ? (
             <img
               src={preview}
               alt="Preview"
               className="w-full h-full object-cover"
-              style={{ transform: `scale(${zoom})` }}
+              style={{
+                transform: `scale(${zoom})`,
+              }}
             />
           ) : (
-            <span className="text-4xl font-serif text-[#D89A4A]">D</span>
+            <span className="text-4xl font-serif text-[#D89A4A]">
+              D
+            </span>
           )}
         </div>
 
+        {/* Zoom */}
         {preview && (
           <div className="w-full">
             <label className="text-[11px] font-mono text-[#6E6258] block mb-1">
               Zoom
             </label>
+
             <input
               type="range"
               min="1"
               max="2"
               step="0.01"
               value={zoom}
-              onChange={(e) => setZoom(parseFloat(e.target.value))}
+              onChange={(e) =>
+                setZoom(parseFloat(e.target.value))
+              }
               className="w-full accent-[#D89A4A]"
             />
           </div>
         )}
 
+        {/* Hidden input */}
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           className="hidden"
-          onChange={(e) => handleFile(e.target.files?.[0])}
+          onChange={(e) =>
+            handleFile(e.target.files?.[0])
+          }
         />
 
+        {/* Choose */}
         <Button
           type="button"
-          onClick={() => fileRef.current?.click()}
+          onClick={() =>
+            fileRef.current?.click()
+          }
           className="w-full h-12 rounded-full font-serif bg-white border-2 border-[#E3D5C7] text-[#1F0F0B] hover:bg-[#F6EFE8] flex items-center justify-center gap-2"
         >
           <Upload className="w-4 h-4" />
-          {preview ? "Choose a different photo" : "Choose a photo"}
+
+          {preview
+            ? "Choose a different photo"
+            : "Choose a photo"}
         </Button>
       </div>
 
+      {/* Buttons */}
       <div className="flex gap-3 mt-6">
+
         <Button
           type="button"
           onClick={onClose}
@@ -203,6 +300,7 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
         >
           Cancel
         </Button>
+
         <Button
           type="button"
           disabled={!file || saving}
@@ -213,13 +311,21 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
               : "bg-[#D89A4A]/50 text-[#1F0F0B]/60 cursor-not-allowed"
           }`}
         >
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {saving && (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          )}
+
           Save photo
         </Button>
+
       </div>
     </ModalShell>
   );
 }
+
+// --------------------------------------------------
+// CONFIRM MODAL
+// --------------------------------------------------
 
 function ConfirmModal({
   title,
@@ -231,22 +337,42 @@ function ConfirmModal({
   loading,
 }) {
   return (
-    <ModalShell onClose={onCancel} width="max-w-md">
+    <ModalShell
+      onClose={onCancel}
+      width="max-w-md"
+    >
       <div className="flex items-start gap-3 mb-2">
+
         <div
-          className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${danger ? "bg-[#B8463B]/10" : "bg-[#D89A4A]/15"}`}
+          className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+            danger
+              ? "bg-[#B8463B]/10"
+              : "bg-[#D89A4A]/15"
+          }`}
         >
           <AlertTriangle
-            className={`w-5 h-5 ${danger ? "text-[#B8463B]" : "text-[#D89A4A]"}`}
+            className={`w-5 h-5 ${
+              danger
+                ? "text-[#B8463B]"
+                : "text-[#D89A4A]"
+            }`}
           />
         </div>
+
         <div>
-          <h2 className="text-xl font-serif text-[#1F0F0B]">{title}</h2>
-          <p className="text-sm font-mono text-[#6E6258] mt-1">{description}</p>
+          <h2 className="text-xl font-serif text-[#1F0F0B]">
+            {title}
+          </h2>
+
+          <p className="text-sm font-mono text-[#6E6258] mt-1">
+            {description}
+          </p>
         </div>
+
       </div>
 
       <div className="flex gap-3 mt-6">
+
         <Button
           type="button"
           onClick={onCancel}
@@ -254,6 +380,7 @@ function ConfirmModal({
         >
           Cancel
         </Button>
+
         <Button
           type="button"
           disabled={loading}
@@ -264,93 +391,202 @@ function ConfirmModal({
               : "bg-[#D89A4A] text-[#1F0F0B] hover:bg-[#D89A4A]/90"
           }`}
         >
-          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+          {loading && (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          )}
+
           {confirmLabel}
         </Button>
+
       </div>
     </ModalShell>
   );
 }
 
+// --------------------------------------------------
+// ACCOUNT SETTINGS PAGE
+// --------------------------------------------------
+
 export default function AccountSettingsPage({
   onLogout,
   username,
+  displayName,
+  avatar,
   onProfileChange,
 }) {
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [saved, setSaved] = useState(EMPTY_PROFILE);
-  const [form, setForm] = useState(EMPTY_PROFILE);
+  const [loadError, setLoadError] =
+    useState(null);
 
-  const [showAvatarModal, setShowAvatarModal] = useState(false);
-  const [avatarSaving, setAvatarSaving] = useState(false);
-  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
-  const [removingAvatar, setRemovingAvatar] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] =
+    useState(false);
 
-  const [editingName, setEditingName] = useState(false);
-  const nameInputRef = useRef(null);
+  const [saveError, setSaveError] =
+    useState(null);
 
-  const [savedToast, setSavedToast] = useState(false);
+  const [saved, setSaved] =
+    useState(EMPTY_PROFILE);
 
-  // Load the real profile from Postgres on mount
+  const [form, setForm] =
+    useState(EMPTY_PROFILE);
+
+  const [showAvatarModal, setShowAvatarModal] =
+    useState(false);
+
+  const [avatarSaving, setAvatarSaving] =
+    useState(false);
+
+  const [showRemoveConfirm, setShowRemoveConfirm] =
+    useState(false);
+
+  const [removingAvatar, setRemovingAvatar] =
+    useState(false);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] =
+    useState(false);
+
+  const [deleting, setDeleting] =
+    useState(false);
+
+  const [editingName, setEditingName] =
+    useState(false);
+
+  const nameInputRef =
+    useRef(null);
+
+  const [savedToast, setSavedToast] =
+    useState(false);
+
+  // --------------------------------------------------
+  // LOAD PROFILE
+  // --------------------------------------------------
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    const loadProfile = async () => {
       try {
-        const { user } = await authService.getProfile();
+        const { user } =
+          await authService.getProfile();
+
         if (cancelled) return;
-        const mapped = fromServerUser(user);
+
+        if (!user) {
+          onLogout?.();
+          return;
+        }
+
+        const mapped =
+          fromServerUser(user);
+
         setSaved(mapped);
         setForm(mapped);
+
+        // Keep App.jsx in sync
+        onProfileChange?.(user);
+
       } catch (err) {
-        if (!cancelled) setLoadError(err.message || "Failed to load profile");
+        if (!cancelled) {
+          setLoadError(
+            err.message ||
+              "Failed to load profile"
+          );
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    })();
+    };
+
+    loadProfile();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
+  // --------------------------------------------------
+  // FOCUS NAME INPUT
+  // --------------------------------------------------
+
   useEffect(() => {
-    if (editingName) nameInputRef.current?.focus();
+    if (editingName) {
+      nameInputRef.current?.focus();
+    }
   }, [editingName]);
 
-  const isDirty = JSON.stringify(saved) !== JSON.stringify(form);
+  // --------------------------------------------------
+  // CHECK CHANGES
+  // --------------------------------------------------
 
-  const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const isDirty =
+    JSON.stringify(saved) !==
+    JSON.stringify(form);
+
+  // --------------------------------------------------
+  // UPDATE FORM
+  // --------------------------------------------------
+
+  const update = (key, value) => {
+    setForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  // --------------------------------------------------
+  // SAVE PROFILE
+  // --------------------------------------------------
 
   const handleSaveChanges = async () => {
     setSaving(true);
     setSaveError(null);
+
     try {
-      const { user } = await authService.updateProfile({
-        name: form.name,
-        language: form.language,
-        country: form.country,
-        quality: form.quality,
-        default_reconstruction: form.reconstruction,
-      });
-      const mapped = fromServerUser(user);
+      const { user } =
+        await authService.updateProfile({
+          name: form.name,
+          language: form.language,
+          country: form.country,
+          quality: form.quality,
+          default_reconstruction:
+            form.reconstruction,
+        });
+
+      const mapped =
+        fromServerUser(user);
+
       setSaved(mapped);
       setForm(mapped);
-      onNameChange?.(mapped.name);
+
+      // THIS IS THE IMPORTANT PART
+      // Send updated user to App.jsx
+      onProfileChange?.(user);
+
       setSavedToast(true);
-      setTimeout(() => setSavedToast(false), 2200);
+
+      setTimeout(() => {
+        setSavedToast(false);
+      }, 2200);
+
     } catch (err) {
-      setSaveError(err.message || "Failed to save changes");
+      setSaveError(
+        err.message ||
+          "Failed to save changes"
+      );
     } finally {
       setSaving(false);
     }
   };
+
+  // --------------------------------------------------
+  // CANCEL CHANGES
+  // --------------------------------------------------
 
   const handleCancel = () => {
     setForm(saved);
@@ -358,48 +594,114 @@ export default function AccountSettingsPage({
     setSaveError(null);
   };
 
+  // --------------------------------------------------
+  // SAVE AVATAR
+  // --------------------------------------------------
+
   const handleAvatarSave = async (file) => {
     setAvatarSaving(true);
+    setSaveError(null);
+
     try {
-      const { user } = await authService.uploadAvatar(file);
-      const mapped = fromServerUser(user);
+      const { user } =
+        await authService.uploadAvatar(file);
+
+      const mapped =
+        fromServerUser(user);
+
       setSaved(mapped);
       setForm(mapped);
+
+      // Update Header immediately
+      onProfileChange?.(user);
+
       setShowAvatarModal(false);
+
+      setSavedToast(true);
+
+      setTimeout(() => {
+        setSavedToast(false);
+      }, 2200);
+
     } catch (err) {
-      setSaveError(err.message || "Failed to upload avatar");
+      setSaveError(
+        err.message ||
+          "Failed to upload avatar"
+      );
     } finally {
       setAvatarSaving(false);
     }
   };
 
+  // --------------------------------------------------
+  // REMOVE AVATAR
+  // --------------------------------------------------
+
   const handleRemoveAvatar = async () => {
     setRemovingAvatar(true);
+    setSaveError(null);
+
     try {
-      const { user } = await authService.removeAvatar();
-      const mapped = fromServerUser(user);
+      const { user } =
+        await authService.removeAvatar();
+
+      const mapped =
+        fromServerUser(user);
+
       setSaved(mapped);
       setForm(mapped);
+
+      // Update Header immediately
+      onProfileChange?.(user);
+
       setShowRemoveConfirm(false);
+
+      setSavedToast(true);
+
+      setTimeout(() => {
+        setSavedToast(false);
+      }, 2200);
+
     } catch (err) {
-      setSaveError(err.message || "Failed to remove avatar");
+      setSaveError(
+        err.message ||
+          "Failed to remove avatar"
+      );
     } finally {
       setRemovingAvatar(false);
     }
   };
 
+  // --------------------------------------------------
+  // DELETE ACCOUNT
+  // --------------------------------------------------
+
   const handleDeleteAccount = async () => {
     setDeleting(true);
+    setSaveError(null);
+
     try {
       await authService.deleteAccount();
+
       setShowDeleteConfirm(false);
+
       onLogout?.();
+
       navigate("/");
+
     } catch (err) {
-      setSaveError(err.message || "Failed to delete account");
+      setSaveError(
+        err.message ||
+          "Failed to delete account"
+      );
+
       setDeleting(false);
     }
   };
+
+  // --------------------------------------------------
+  // LOADING
+  // --------------------------------------------------
 
   if (loading) {
     return (
@@ -409,6 +711,10 @@ export default function AccountSettingsPage({
     );
   }
 
+  // --------------------------------------------------
+  // ERROR
+  // --------------------------------------------------
+
   if (loadError) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#F6EFE8] font-mono text-sm text-[#B8463B]">
@@ -417,32 +723,51 @@ export default function AccountSettingsPage({
     );
   }
 
+  // --------------------------------------------------
+  // PAGE
+  // --------------------------------------------------
+
   return (
     <div className="h-screen overflow-hidden bg-[#F6EFE8]">
+
       <Header
         onLogout={onLogout}
         username={username}
         displayName={displayName}
         avatar={avatar}
-      />{" "}
+      />
+
       <motion.main
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        initial={{
+          opacity: 0,
+          y: 16,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.5,
+        }}
         className="h-full max-w-2xl mx-auto px-6 pt-24 pb-6 flex flex-col justify-center overflow-hidden"
       >
+
         <h1 className="text-3xl font-serif text-[#1F0F0B] mb-6">
           Account Settings
         </h1>
 
+        {/* ERROR */}
         {saveError && (
           <div className="mb-4 text-sm font-mono text-[#B8463B] bg-[#B8463B]/10 border border-[#B8463B]/30 rounded-xl px-4 py-2">
             {saveError}
           </div>
         )}
 
+        {/* PROFILE IMAGE */}
         <div className="flex items-center gap-4 mb-6">
+
           <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#E3D5C7] bg-linear-to-br from-[#4E9DDE] via-[#1F0F0B] to-[#4EDE8E] flex items-center justify-center shrink-0">
+
             {form.avatar ? (
               <img
                 src={form.avatar}
@@ -451,21 +776,30 @@ export default function AccountSettingsPage({
               />
             ) : (
               <span className="text-2xl font-serif text-white">
-                {form.name.charAt(0) || "?"}
+                {form.name.charAt(0) ||
+                  username?.charAt(0) ||
+                  "?"}
               </span>
             )}
+
           </div>
+
           <Button
             type="button"
-            onClick={() => setShowAvatarModal(true)}
+            onClick={() =>
+              setShowAvatarModal(true)
+            }
             className="h-10 px-5 rounded-full font-serif text-sm bg-white border-2 border-[#E3D5C7] text-[#1F0F0B] hover:bg-[#F6EFE8]"
           >
             Update
           </Button>
+
           <button
             type="button"
             disabled={!form.avatar}
-            onClick={() => setShowRemoveConfirm(true)}
+            onClick={() =>
+              setShowRemoveConfirm(true)
+            }
             className={`flex items-center gap-1.5 text-sm font-mono ${
               form.avatar
                 ? "text-[#6E6258] hover:text-[#B8463B] cursor-pointer"
@@ -475,71 +809,141 @@ export default function AccountSettingsPage({
             <Trash2 className="w-4 h-4" />
             Remove
           </button>
+
         </div>
 
+        {/* NAME */}
         <div className="mb-6">
-          <FieldLabel>Name</FieldLabel>
+
+          <FieldLabel>
+            Name
+          </FieldLabel>
+
           {editingName ? (
             <Input
               ref={nameInputRef}
               type="text"
               value={form.name}
-              onChange={(e) => update("name", e.target.value)}
-              onBlur={() => setEditingName(false)}
-              onKeyDown={(e) => e.key === "Enter" && setEditingName(false)}
+              onChange={(e) =>
+                update(
+                  "name",
+                  e.target.value
+                )
+              }
+              onBlur={() =>
+                setEditingName(false)
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  setEditingName(false);
+                }
+              }}
               className="bg-white! border-2 border-[#D89A4A] h-14 px-5 rounded-xl text-[#1F0F0B] font-mono"
             />
           ) : (
             <button
               type="button"
-              onClick={() => setEditingName(true)}
+              onClick={() =>
+                setEditingName(true)
+              }
               className="w-full h-14 px-5 rounded-xl bg-white border-2 border-[#E3D5C7] flex items-center justify-between text-left text-[#1F0F0B] font-mono hover:border-[#D89A4A] transition-colors"
             >
-              <span>{form.name || "Add your name"}</span>
+              <span>
+                {form.name ||
+                  "Add your name"}
+              </span>
+
               <Pencil className="w-4 h-4 text-[#6E6258]" />
             </button>
           )}
+
         </div>
 
+        {/* LANGUAGE */}
         <div className="mb-6">
-          <FieldLabel>Language</FieldLabel>
+
+          <FieldLabel>
+            Language
+          </FieldLabel>
+
           <SelectField
             value={form.language}
-            onChange={(v) => update("language", v)}
+            onChange={(value) =>
+              update(
+                "language",
+                value
+              )
+            }
             options={LANGUAGES}
           />
+
         </div>
 
+        {/* COUNTRY */}
         <div className="mb-6">
-          <FieldLabel>Country</FieldLabel>
+
+          <FieldLabel>
+            Country
+          </FieldLabel>
+
           <SelectField
             value={form.country}
-            onChange={(v) => update("country", v)}
+            onChange={(value) =>
+              update(
+                "country",
+                value
+              )
+            }
             options={COUNTRIES}
           />
+
         </div>
 
+        {/* QUALITY + RECONSTRUCTION */}
         <div className="grid grid-cols-2 gap-5 mb-12">
+
           <div>
-            <FieldLabel>Standard Quality</FieldLabel>
+            <FieldLabel>
+              Standard Quality
+            </FieldLabel>
+
             <SelectField
               value={form.quality}
-              onChange={(v) => update("quality", v)}
+              onChange={(value) =>
+                update(
+                  "quality",
+                  value
+                )
+              }
               options={QUALITIES}
             />
           </div>
+
           <div>
-            <FieldLabel>Default Reconstruction</FieldLabel>
+            <FieldLabel>
+              Default Reconstruction
+            </FieldLabel>
+
             <SelectField
               value={form.reconstruction}
-              onChange={(v) => update("reconstruction", v)}
+              onChange={(value) =>
+                update(
+                  "reconstruction",
+                  value
+                )
+              }
               options={RECONSTRUCTIONS}
             />
           </div>
+
         </div>
 
+        {/* ACTION BUTTONS */}
         <div className="flex items-center justify-between flex-wrap gap-4">
+
           <div className="flex items-center gap-3">
+
+            {/* SAVE */}
             <Button
               type="button"
               disabled={!isDirty || saving}
@@ -550,9 +954,14 @@ export default function AccountSettingsPage({
                   : "bg-[#D89A4A]/50 text-[#1F0F0B]/60 cursor-not-allowed"
               }`}
             >
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {saving && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+
               Save Changes
             </Button>
+
+            {/* CANCEL */}
             <Button
               type="button"
               disabled={!isDirty || saving}
@@ -565,23 +974,40 @@ export default function AccountSettingsPage({
             >
               Cancel
             </Button>
+
           </div>
 
+          {/* DELETE */}
           <Button
             type="button"
-            onClick={() => setShowDeleteConfirm(true)}
+            onClick={() =>
+              setShowDeleteConfirm(true)
+            }
             className="h-12 px-8 rounded-full font-serif bg-[#B8463B] text-white hover:bg-[#B8463B]/90"
           >
             Delete Account
           </Button>
+
         </div>
+
       </motion.main>
+
+      {/* SAVED TOAST */}
       <AnimatePresence>
         {savedToast && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
+            initial={{
+              opacity: 0,
+              y: 20,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            exit={{
+              opacity: 0,
+              y: 20,
+            }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1F0F0B] text-[#F6EFE8] font-mono text-sm px-5 py-3 rounded-full flex items-center gap-2 shadow-lg"
           >
             <Check className="w-4 h-4 text-[#D89A4A]" />
@@ -589,16 +1015,23 @@ export default function AccountSettingsPage({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* AVATAR MODAL */}
       <AnimatePresence>
         {showAvatarModal && (
           <AvatarUploadModal
             currentAvatar={form.avatar}
             saving={avatarSaving}
-            onClose={() => setShowAvatarModal(false)}
+            onClose={() =>
+              setShowAvatarModal(false)
+            }
             onSave={handleAvatarSave}
           />
         )}
+      </AnimatePresence>
 
+      {/* REMOVE AVATAR MODAL */}
+      <AnimatePresence>
         {showRemoveConfirm && (
           <ConfirmModal
             title="Remove profile photo?"
@@ -606,11 +1039,16 @@ export default function AccountSettingsPage({
             confirmLabel="Remove"
             danger
             loading={removingAvatar}
-            onCancel={() => setShowRemoveConfirm(false)}
+            onCancel={() =>
+              setShowRemoveConfirm(false)
+            }
             onConfirm={handleRemoveAvatar}
           />
         )}
+      </AnimatePresence>
 
+      {/* DELETE ACCOUNT MODAL */}
+      <AnimatePresence>
         {showDeleteConfirm && (
           <ConfirmModal
             title="Delete your account?"
@@ -618,11 +1056,14 @@ export default function AccountSettingsPage({
             confirmLabel="Delete account"
             danger
             loading={deleting}
-            onCancel={() => setShowDeleteConfirm(false)}
+            onCancel={() =>
+              setShowDeleteConfirm(false)
+            }
             onConfirm={handleDeleteAccount}
           />
         )}
       </AnimatePresence>
+
     </div>
   );
 }

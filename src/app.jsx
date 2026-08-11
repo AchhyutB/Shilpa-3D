@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import axios from "axios";
+
 import { authService } from "./lib/authServices";
+
 import LandingPage from "./pages/landing-page";
 import LoginPage from "./pages/login-page";
 import SignUpPage from "./pages/signup-page";
@@ -15,38 +17,88 @@ import AccountSettingsPage from "./pages/account-page";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
-    !!localStorage.getItem("accessToken"),
+    !!localStorage.getItem("accessToken")
   );
+
   const [username, setUsername] = useState(
-    localStorage.getItem("username") || "",
+    localStorage.getItem("username") || ""
   );
 
   const [displayName, setDisplayName] = useState(
-    localStorage.getItem("displayName") || "",
+    localStorage.getItem("displayName") || ""
   );
 
-  const [avatar, setAvatar] = useState(localStorage.getItem("avatar") || null);
+  const [avatar, setAvatar] = useState(
+    localStorage.getItem("avatar") || null
+  );
+
+  // --------------------------------------------------
+  // LOGIN
+  // --------------------------------------------------
 
   const handleLogin = () => {
     setIsLoggedIn(true);
+
     setUsername(localStorage.getItem("username") || "");
+    setDisplayName(localStorage.getItem("displayName") || "");
+    setAvatar(localStorage.getItem("avatar") || null);
   };
+
+  // --------------------------------------------------
+  // LOGOUT
+  // --------------------------------------------------
 
   const handleLogout = async () => {
     try {
       await authService.logout();
     } catch {
-      // token might already be stale — clear local state regardless
+      // Token might already be stale.
+      // Clear local state regardless.
     }
+
     setIsLoggedIn(false);
     setUsername("");
+    setDisplayName("");
+    setAvatar(null);
+
     localStorage.removeItem("accessToken");
     localStorage.removeItem("username");
+    localStorage.removeItem("displayName");
+    localStorage.removeItem("avatar");
   };
 
-  // fetch profile on refresh or after Google OAuth
+  // --------------------------------------------------
+  // UPDATE PROFILE STATE
+  // --------------------------------------------------
+
+  const handleProfileChange = (user) => {
+    if (!user) return;
+
+    const newUsername = user.username || "";
+    const newDisplayName = user.name || "";
+    const newAvatar = user.avatar_url || null;
+
+    setUsername(newUsername);
+    setDisplayName(newDisplayName);
+    setAvatar(newAvatar);
+
+    localStorage.setItem("username", newUsername);
+    localStorage.setItem("displayName", newDisplayName);
+
+    if (newAvatar) {
+      localStorage.setItem("avatar", newAvatar);
+    } else {
+      localStorage.removeItem("avatar");
+    }
+  };
+
+  // --------------------------------------------------
+  // FETCH PROFILE ON REFRESH / GOOGLE OAUTH
+  // --------------------------------------------------
+
   useEffect(() => {
     if (!isLoggedIn) return;
+
     let cancelled = false;
 
     authService
@@ -59,17 +111,12 @@ export default function App() {
           return;
         }
 
-        setUsername(user.username);
-        localStorage.setItem("username", user.username);
-
-        setDisplayName(user.name || "");
-        localStorage.setItem("displayName", user.name || "");
-
-        setAvatar(user.avatar_url || null);
-        localStorage.setItem("avatar", user.avatar_url || "");
+        handleProfileChange(user);
       })
       .catch(() => {
-        if (!cancelled) handleLogout();
+        if (!cancelled) {
+          handleLogout();
+        }
       });
 
     return () => {
@@ -77,29 +124,75 @@ export default function App() {
     };
   }, [isLoggedIn]);
 
-  // global axios interceptor — auto logout on 401 (token expired or user deleted)
+  // --------------------------------------------------
+  // GLOBAL AXIOS 401 INTERCEPTOR
+  // --------------------------------------------------
+
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
+
       (error) => {
         if (error.response?.status === 401) {
           setIsLoggedIn(false);
           setUsername("");
+          setDisplayName("");
+          setAvatar(null);
+
           localStorage.removeItem("accessToken");
           localStorage.removeItem("username");
+          localStorage.removeItem("displayName");
+          localStorage.removeItem("avatar");
         }
+
         return Promise.reject(error);
-      },
+      }
     );
-    return () => axios.interceptors.response.eject(interceptor);
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
   }, []);
+
+  // --------------------------------------------------
+  // COMMON HEADER PROPS
+  // --------------------------------------------------
+
+  const headerProps = {
+    username,
+    displayName,
+    avatar,
+    onLogout: handleLogout,
+  };
 
   return (
     <BrowserRouter>
       <Routes>
+
+        {/* PUBLIC */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-        <Route path="/signup" element={<SignUpPage onSignUp={handleLogin} />} />
+
+        <Route
+          path="/login"
+          element={<LoginPage onLogin={handleLogin} />}
+        />
+
+        <Route
+          path="/signup"
+          element={<SignUpPage onSignUp={handleLogin} />}
+        />
+
+        <Route
+          path="/oauth"
+          element={
+            <OAuthPage
+              onLogin={handleLogin}
+              setUsername={setUsername}
+            />
+          }
+        />
+
+        {/* HOME */}
         <Route
           path="/home"
           element={
@@ -108,12 +201,16 @@ export default function App() {
                 isLoggedIn={isLoggedIn}
                 onLogout={handleLogout}
                 username={username}
+                displayName={displayName}
+                avatar={avatar}
               />
             ) : (
               <Navigate to="/login" replace />
             )
           }
         />
+
+        {/* PROCESSING */}
         <Route
           path="/processing"
           element={
@@ -122,12 +219,16 @@ export default function App() {
                 isLoggedIn={isLoggedIn}
                 onLogout={handleLogout}
                 username={username}
+                displayName={displayName}
+                avatar={avatar}
               />
             ) : (
               <Navigate to="/login" replace />
             )
           }
         />
+
+        {/* RESULTS */}
         <Route
           path="/results"
           element={
@@ -136,25 +237,16 @@ export default function App() {
                 isLoggedIn={isLoggedIn}
                 onLogout={handleLogout}
                 username={username}
+                displayName={displayName}
+                avatar={avatar}
               />
             ) : (
               <Navigate to="/login" replace />
             )
           }
         />
-        <Route
-          path="/account"
-          element={
-            <AccountSettingsPage
-              onLogout={handleLogout}
-              username={username}
-              onNameChange={(newName) => {
-                setDisplayName(newName);
-                localStorage.setItem("displayName", newName);
-              }}
-            />
-          }
-        />
+
+        {/* 3D VIEWER */}
         <Route
           path="/3d-viewer"
           element={
@@ -163,12 +255,16 @@ export default function App() {
                 isLoggedIn={isLoggedIn}
                 onLogout={handleLogout}
                 username={username}
+                displayName={displayName}
+                avatar={avatar}
               />
             ) : (
               <Navigate to="/login" replace />
             )
           }
         />
+
+        {/* HISTORY */}
         <Route
           path="/history"
           element={
@@ -177,23 +273,39 @@ export default function App() {
                 isLoggedIn={isLoggedIn}
                 onLogout={handleLogout}
                 username={username}
+                displayName={displayName}
+                avatar={avatar}
               />
             ) : (
               <Navigate to="/login" replace />
             )
           }
         />
+
+        {/* ACCOUNT SETTINGS */}
         <Route
           path="/account"
-          element={<AccountSettingsPage onLogout={handleLogout} />}
-        />
-        <Route
-          path="/oauth"
           element={
-            <OAuthPage onLogin={handleLogin} setUsername={setUsername} />
+            isLoggedIn ? (
+              <AccountSettingsPage
+                onLogout={handleLogout}
+                username={username}
+                displayName={displayName}
+                avatar={avatar}
+                onProfileChange={handleProfileChange}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
           }
         />
-        <Route path="*" element={<Navigate to="/" />} />
+
+        {/* FALLBACK */}
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
+        />
+
       </Routes>
     </BrowserRouter>
   );

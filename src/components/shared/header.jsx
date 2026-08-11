@@ -2,7 +2,6 @@ import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Header({
-  onNavigate,
   onLogout,
   username,
   displayName,
@@ -10,9 +9,12 @@ export default function Header({
 }) {
   const navigate = useNavigate();
 
+  const profileName = displayName || username || "User";
+
   return (
     <header className="fixed top-0 left-0 right-0 border-b border-border/30 backdrop-blur-sm z-50 bg-background/80">
       <div className="max-w-7xl mx-auto px-2 py-2 flex justify-between items-center">
+
         {/* Logo */}
         <button
           onClick={() => navigate("/home")}
@@ -27,6 +29,8 @@ export default function Header({
 
         {/* Navigation */}
         <nav className="flex items-center gap-8">
+
+          {/* History */}
           <button
             onClick={() => navigate("/history")}
             className="text-foreground hover:text-accent transition-colors"
@@ -34,6 +38,7 @@ export default function Header({
             History
           </button>
 
+          {/* Sign Out */}
           <button
             onClick={() => {
               onLogout();
@@ -44,7 +49,7 @@ export default function Header({
             Sign Out
           </button>
 
-          {/* User Profile — now clickable, navigates to /account */}
+          {/* Profile */}
           <button
             onClick={() => navigate("/account")}
             className="flex items-center gap-2 bg-secondary/40 rounded-full px-4 py-2 hover:bg-secondary/60 transition-colors"
@@ -53,16 +58,22 @@ export default function Header({
               <img
                 src={avatar}
                 alt="Profile"
-                className="w-8 h-8 rounded-full object-cover"
+                className="w-7 h-7 rounded-full object-cover"
               />
             ) : (
-              <User size={20} className="text-accent" />
+              <div className="w-7 h-7 rounded-full flex items-center justify-center bg-secondary">
+                <User
+                  size={18}
+                  className="text-accent"
+                />
+              </div>
             )}
 
             <span className="text-foreground font-serif">
-              {displayName || username || "User"}
+              {profileName}
             </span>
           </button>
+
         </nav>
       </div>
     </header>
