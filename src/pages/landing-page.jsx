@@ -20,7 +20,7 @@ const navigate = useNavigate();
         <img
           src="/assets/main.png"
           alt="Shilpa3D Logo"
-          className="w-150 h-auto object-contain"
+          className="w-[600px] h-auto object-contain"
         />
 
         <motion.div

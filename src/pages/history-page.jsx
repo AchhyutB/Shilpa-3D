@@ -1,224 +1,203 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2 } from 'lucide-react';
-import Header from '../components/shared/header';
-import { Button } from '../components/ui/button';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import Header from '@/components/shared/header';
+import { Trash2, Download, Eye, CheckCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../lib/authServices';
+import { getJobHistory, deleteJob, getJobResults } from '@/lib/api';
 
-const STAGE_LABELS = {
-  not_started: 'Not started',
-  colmap_features: 'Processing…',
-  colmap_matching: 'Processing…',
-  colmap_mapper: 'Processing…',
-  nerf_convert: 'Processing…',
-  nerf_training: 'Processing…',
-  nerf_render: 'Processing…',
-  gaussian_training: 'Processing…',
-  gaussian_render: 'Processing…',
-  done: 'Complete',
-};
+function formatMethods(methods = []) {
+  return methods
+    .map((m) => (m === 'nerf' ? 'NeRF' : m === 'gaussian' ? 'Gaussian Splatting' : m))
+    .join(' + ');
+}
 
-export default function HistoryPage({ onNavigate, isLoggedIn, onLogout, username }) {
-  const navigate = useNavigate();
-  const [sessions, setSessions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+export default function HistoryPage({ onNavigate, isLoggedIn, onLogout }) {
   const [deletingId, setDeletingId] = useState(null);
-  const [sessionToDelete, setSessionToDelete] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [historyItems, setHistoryItems] = useState(null); // null = still loading
+  const navigate = useNavigate();
 
   useEffect(() => {
-    authService
-      .getHistory()
-      .then((data) => setSessions(data.sessions || []))
-      .catch((err) => setError(err.message || 'Failed to load history'))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    getJobHistory()
+      .then((data) => {
+        if (!cancelled) setHistoryItems(data);
+      })
+      .catch(() => {
+        if (!cancelled) setErrorMessage('Could not load your history.');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const openSession = (session) => {
-    if (session.stage === 'done') {
-      navigate('/results', { state: { sessionId: session.session_id } });
-    } else {
-      navigate('/processing', { state: { sessionId: session.session_id } });
+  const handleDownload = async (id) => {
+    const item = historyItems.find((h) => h.id === id);
+    if (!item) return;
+
+    try {
+      // Pull the actual results so the download is useful, not just
+      // the row's list metadata.
+      const results = await getJobResults(id);
+      const data = JSON.stringify({ ...item, results }, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `shilpa3d-${item.date}-${id}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      setSuccessMessage('Downloaded successfully!');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setErrorMessage('Could not download this item right now.');
+      setTimeout(() => setErrorMessage(null), 3000);
     }
   };
 
-  const handleDelete = (e, session) => {
-    e.stopPropagation(); // don't trigger openSession when clicking delete
-    setSessionToDelete(session);
-  };
-
-  const confirmDelete = async () => {
-    const session = sessionToDelete;
-    if (!session) return;
-    setSessionToDelete(null);
-
-    const previousSessions = sessions;
-    setDeletingId(session.session_id);
-    // Optimistic removal — feels instant, revert if the request fails
-    setSessions((prev) => prev.filter((s) => s.session_id !== session.session_id));
-
+  const handleDelete = async (id) => {
+    setDeletingId(id);
     try {
-      await authService.deleteSession(session.session_id);
+      await deleteJob(id);
+      setHistoryItems((items) => items.filter((item) => item.id !== id));
+      setSuccessMessage('Item deleted from history');
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setSessions(previousSessions);
-      setError(err.message || 'Failed to delete session');
+      setErrorMessage('Could not delete this item. Please try again.');
+      setTimeout(() => setErrorMessage(null), 3000);
     } finally {
       setDeletingId(null);
     }
   };
 
-  const formatDate = (iso) => {
-    if (!iso) return 'Unknown date';
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   return (
     <div className="min-h-screen bg-background">
-      <Header onNavigate={onNavigate} onLogout={onLogout} username={username} />
+      <Header onNavigate={onNavigate} onLogout={onLogout} />
 
-      <main className="pt-28 pb-12">
-        <div className="max-w-5xl mx-auto px-6 space-y-8">
+      <main className="sm:h-[calc(100vh-9rem)] pt-32 sm:pt-32 pb-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          {successMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-accent/10 border border-accent/30 text-accent p-4 rounded-lg mb-6 flex items-center gap-2 text-sm"
+            >
+              <CheckCircle size={18} className="shrink-0" />
+              {successMessage}
+            </motion.div>
+          )}
 
-          <motion.h1
+          {errorMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-destructive/10 border border-destructive/30 text-destructive p-4 rounded-lg mb-6 text-sm"
+            >
+              {errorMessage}
+            </motion.div>
+          )}
+
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-4xl font-mono text-foreground"
+            className="space-y-4 mb-12"
           >
-            History
-          </motion.h1>
+            <h1 className="text-4xl font-mono text-foreground">History</h1>
+          </motion.div>
 
-          {loading && (
-            <p className="font-mono text-muted-foreground text-center py-12">Loading your uploads…</p>
-          )}
+          {historyItems === null ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="animate-spin text-muted-foreground" size={28} />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                {historyItems.map((item, idx) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: idx * 0.1 }}
+                    className="bg-muted/40 border border-border/60 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6"
+                  >
+                    <div className="flex gap-6 flex-1">
+                      <div className="w-20 h-20 bg-primary/10 rounded-lg flex-shrink-0 overflow-hidden">
+                        <div className="w-full h-full bg-background from-accent/30 to-accent/10 flex items-center justify-center" />
+                      </div>
 
-          {!loading && error && (
-            <p className="font-mono text-red-500 text-center py-12">{error}</p>
-          )}
-
-          {!loading && !error && sessions.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-center py-16 space-y-4"
-            >
-              <p className="font-mono text-muted-foreground">You haven't uploaded anything yet.</p>
-              <Button
-                onClick={() => navigate('/home')}
-                className="bg-accent border border-border-cream text-accent-foreground hover:bg-accent/90 px-8 py-6 font-serif rounded-full"
-              >
-                Upload Your First Statue
-              </Button>
-            </motion.div>
-          )}
-
-          {!loading && !error && sessions.length > 0 && (
-            <div className="space-y-4">
-              {sessions.map((session, idx) => (
-                <motion.div
-                  key={session.session_id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: idx * 0.05 }}
-                  onClick={() => openSession(session)}
-                  className="w-full text-left bg-card-foreground border border-border/30 rounded-2xl p-6 flex items-center justify-between gap-4 hover:border-accent/50 transition-colors cursor-pointer"
-                >
-                  <div className="space-y-1">
-                    <h3 className="font-serif text-lg text-background">
-                      {session.statue || 'Untitled statue'}
-                    </h3>
-                    <p className="text-xs font-mono text-muted">
-                      {formatDate(session.created_at)}
-                      {session.method && ` · ${session.method.toUpperCase()}`}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-4 shrink-0">
-                    <div className="text-right">
-                      <span
-                        className={`text-xs font-mono px-3 py-1 rounded-full ${
-                          session.stage === 'done'
-                            ? 'bg-accent/10 text-accent'
-                            : 'bg-secondary/40 text-muted-foreground'
-                        }`}
-                      >
-                        {STAGE_LABELS[session.stage] || session.stage}
-                      </span>
-                      {session.stage !== 'done' && session.stage !== 'not_started' && (
-                        <p className="text-xs font-mono text-muted-foreground mt-1">
-                          {Math.round(session.percent)}%
+                      <div className="flex-1 space-y-2">
+                        <p className="text-lg text-foreground font-mono">{item.date}</p>
+                        <p className="text-sm font-mono text-muted-foreground">
+                          {formatMethods(item.methods)}
                         </p>
-                      )}
+                      </div>
                     </div>
 
-                    <button
-                      onClick={(e) => handleDelete(e, session)}
-                      disabled={deletingId === session.session_id}
-                      aria-label="Delete session"
-                      className="p-2 rounded-full text-black hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+                    <div className="flex gap-2 sm:gap-3 flex-shrink-0 w-full sm:w-auto">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 sm:flex-none !bg-accent border !border-border-cream !text-accent-foreground !hover:bg-accent/90 px-4 sm:px-8 py-6 text-lg font-medium rounded-full"
+                        onClick={() => navigate(`/3d-viewer/${item.id}`)}
+                      >
+                        <Eye size={16} />
+                        <span className="hidden sm:inline">View</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 sm:flex-none !bg-accent border !border-border-cream !text-accent-foreground !hover:bg-accent/90 px-4 sm:px-8 py-6 text-lg font-medium rounded-full"
+                        onClick={() => handleDownload(item.id)}
+                      >
+                        <Download size={16} />
+                        <span className="hidden sm:inline">Download</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`flex-1 sm:flex-none !bg-accent border !border-border-cream !text-accent-foreground !hover:bg-accent/90 px-4 sm:px-8 py-6 text-lg font-medium rounded-full ${
+                          deletingId === item.id ? 'opacity-50 cursor-wait' : ''
+                        }`}
+                        onClick={() => handleDelete(item.id)}
+                        disabled={deletingId === item.id}
+                      >
+                        <Trash2 size={16} />
+                        <span className="hidden sm:inline">Delete</span>
+                      </Button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {historyItems.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6 }}
+                  className="text-center space-y-4 py-12"
+                >
+                  <p className="text-2xl text-muted-foreground">No reconstructions yet</p>
+                  <Button
+                    onClick={() => navigate('/home')}
+                    className="bg-accent text-accent-foreground hover:bg-accent/90 px-8 py-4 rounded-full"
+                  >
+                    Create Your First Model
+                  </Button>
                 </motion.div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </main>
-
-      <AnimatePresence>
-        {sessionToDelete && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6"
-            onClick={() => setSessionToDelete(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.2 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-card-foreground border border-border-cream rounded-2xl p-6 max-w-sm w-full space-y-5"
-            >
-              <div className="space-y-2">
-                <h3 className="font-serif text-lg text-background">Delete session?</h3>
-                <p className="text-sm font-mono text-muted">
-                  "{sessionToDelete.statue || 'This session'}" will be permanently removed. This can't be undone.
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setSessionToDelete(null)}
-                  className="px-4 py-2 text-xs font-mono rounded-full text-muted-foreground hover:bg-secondary/40 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmDelete}
-                  className="px-4 py-2 text-xs font-mono rounded-full bg-red-500/90 text-white hover:bg-red-500 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
