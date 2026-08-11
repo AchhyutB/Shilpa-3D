@@ -157,8 +157,8 @@ const serializeUser = (req, user) => {
   return {
     ...rest,
     avatar_url: avatar_filename
-      ? `${req.protocol}://${req.get("host")}/avatars/${avatar_filename}`
-      : null,
+  ? `${req.protocol}://${req.get("host")}/uploads/avatars/${avatar_filename}`
+  : null,
   };
 };
 

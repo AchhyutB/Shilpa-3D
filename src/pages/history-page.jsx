@@ -26,6 +26,8 @@ export default function HistoryPage({
   isLoggedIn,
   onLogout,
   username,
+  displayName,
+  avatar,
 }) {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);

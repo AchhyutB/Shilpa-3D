@@ -17,20 +17,18 @@ import AccountSettingsPage from "./pages/account-page";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
-    !!localStorage.getItem("accessToken")
+    !!localStorage.getItem("accessToken"),
   );
 
   const [username, setUsername] = useState(
-    localStorage.getItem("username") || ""
+    localStorage.getItem("username") || "",
   );
 
   const [displayName, setDisplayName] = useState(
-    localStorage.getItem("displayName") || ""
+    localStorage.getItem("displayName") || "",
   );
 
-  const [avatar, setAvatar] = useState(
-    localStorage.getItem("avatar") || ""
-  );
+  const [avatar, setAvatar] = useState(localStorage.getItem("avatar") || "");
 
   // ==========================================
   // LOGIN
@@ -146,7 +144,7 @@ export default function App() {
         }
 
         return Promise.reject(error);
-      }
+      },
     );
 
     return () => {
@@ -157,31 +155,13 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-
         {/* PUBLIC */}
 
-        <Route
-          path="/"
-          element={<LandingPage />}
-        />
+        <Route path="/" element={<LandingPage />} />
 
-        <Route
-          path="/login"
-          element={
-            <LoginPage
-              onLogin={handleLogin}
-            />
-          }
-        />
+        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
 
-        <Route
-          path="/signup"
-          element={
-            <SignUpPage
-              onSignUp={handleLogin}
-            />
-          }
-        />
+        <Route path="/signup" element={<SignUpPage onSignUp={handleLogin} />} />
 
         {/* HOME */}
 
@@ -302,20 +282,13 @@ export default function App() {
         <Route
           path="/oauth"
           element={
-            <OAuthPage
-              onLogin={handleLogin}
-              setUsername={setUsername}
-            />
+            <OAuthPage onLogin={handleLogin} setUsername={setUsername} />
           }
         />
 
         {/* FALLBACK */}
 
-        <Route
-          path="*"
-          element={<Navigate to="/" replace />}
-        />
-
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

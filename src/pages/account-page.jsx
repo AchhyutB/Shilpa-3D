@@ -412,7 +412,7 @@ export default function AccountSettingsPage({
   username,
   displayName,
   avatar,
-  onProfileChange,
+  onProfileUpdate,
 }) {
   const navigate = useNavigate();
 
@@ -487,7 +487,7 @@ export default function AccountSettingsPage({
         setForm(mapped);
 
         // Keep App.jsx in sync
-        onProfileChange?.(user);
+        onProfileUpdate?.(user);
 
       } catch (err) {
         if (!cancelled) {
@@ -566,7 +566,7 @@ export default function AccountSettingsPage({
 
       // THIS IS THE IMPORTANT PART
       // Send updated user to App.jsx
-      onProfileChange?.(user);
+      onProfileUpdate?.(user);
 
       setSavedToast(true);
 
@@ -613,7 +613,7 @@ export default function AccountSettingsPage({
       setForm(mapped);
 
       // Update Header immediately
-      onProfileChange?.(user);
+      onProfileUpdate?.(user);
 
       setShowAvatarModal(false);
 
@@ -652,7 +652,7 @@ export default function AccountSettingsPage({
       setForm(mapped);
 
       // Update Header immediately
-      onProfileChange?.(user);
+      onProfileUpdate?.(user);
 
       setShowRemoveConfirm(false);
 
