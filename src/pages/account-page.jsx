@@ -275,7 +275,7 @@ function ConfirmModal({
 export default function AccountSettingsPage({
   onLogout,
   username,
-  onNameChange,
+  onProfileChange,
 }) {
   const navigate = useNavigate();
 
@@ -419,12 +419,13 @@ export default function AccountSettingsPage({
 
   return (
     <div className="h-screen overflow-hidden bg-[#F6EFE8]">
-<Header
-  onLogout={onLogout}
-  username={username}
-  displayName={displayName}
-  avatar={avatar}
-/>      <motion.main
+      <Header
+        onLogout={onLogout}
+        username={username}
+        displayName={displayName}
+        avatar={avatar}
+      />{" "}
+      <motion.main
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -575,7 +576,6 @@ export default function AccountSettingsPage({
           </Button>
         </div>
       </motion.main>
-
       <AnimatePresence>
         {savedToast && (
           <motion.div
@@ -589,7 +589,6 @@ export default function AccountSettingsPage({
           </motion.div>
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {showAvatarModal && (
           <AvatarUploadModal
