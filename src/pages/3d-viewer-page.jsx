@@ -99,8 +99,12 @@ export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onLogout={onLogout} username={username} />
-
+<Header
+  onLogout={onLogout}
+  username={username}
+  displayName={displayName}
+  avatar={avatar}
+/>
       {downloadSuccess && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}

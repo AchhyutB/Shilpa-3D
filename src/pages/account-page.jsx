@@ -1,35 +1,62 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { useNavigate } from 'react-router-dom';
-import { Pencil, Upload, Trash2, X, AlertTriangle, Check, Loader2 } from 'lucide-react';
-import Header from '@/components/shared/header';
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { useNavigate } from "react-router-dom";
+import {
+  Pencil,
+  Upload,
+  Trash2,
+  X,
+  AlertTriangle,
+  Check,
+  Loader2,
+} from "lucide-react";
+import Header from "@/components/shared/header";
 import { authService } from "@/lib/authServices";
 
-const LANGUAGES = ['English', 'Nepali', 'Hindi', 'Spanish', 'French', 'German', 'Japanese', 'Chinese'];
-const COUNTRIES = ['United States', 'Nepal', 'India', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'Japan', 'Other'];
-const QUALITIES = ['Low', 'Standard', 'High'];
-const RECONSTRUCTIONS = ['Gaussian Splat', 'NeRF'];
+const LANGUAGES = [
+  "English",
+  "Nepali",
+  "Hindi",
+  "Spanish",
+  "French",
+  "German",
+  "Japanese",
+  "Chinese",
+];
+const COUNTRIES = [
+  "United States",
+  "Nepal",
+  "India",
+  "United Kingdom",
+  "Canada",
+  "Australia",
+  "Germany",
+  "Japan",
+  "Other",
+];
+const QUALITIES = ["Low", "Standard", "High"];
+const RECONSTRUCTIONS = ["Gaussian Splat", "NeRF"];
 
 const EMPTY_PROFILE = {
   avatar: null,
-  name: '',
-  language: 'English',
-  country: 'United States',
-  quality: 'Standard',
-  reconstruction: 'Gaussian Splat',
+  name: "",
+  language: "English",
+  country: "United States",
+  quality: "Standard",
+  reconstruction: "Gaussian Splat",
 };
 
 // backend uses default_reconstruction / avatar_url — map to the form's shape
 function fromServerUser(user) {
   return {
     avatar: user.avatar_url || null,
-    name: user.name || '',
-    language: user.language || 'English',
-    country: user.country || 'United States',
-    quality: user.quality || 'Standard',
-    reconstruction: user.default_reconstruction || 'Gaussian Splat',
+    name: user.name || "",
+    language: user.language || "English",
+    country: user.country || "United States",
+    quality: user.quality || "Standard",
+    reconstruction: user.default_reconstruction || "Gaussian Splat",
   };
 }
 
@@ -50,12 +77,17 @@ function SelectField({ value, onChange, options }) {
         className="w-full appearance-none bg-white border-2 border-[#E3D5C7] h-12 px-5 pr-10 rounded-xl text-[#1F0F0B] font-mono text-sm cursor-pointer focus:outline-none focus:border-[#D89A4A] transition-colors"
       >
         {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
         ))}
       </select>
       <svg
         className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6E6258]"
-        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
       >
         <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -63,7 +95,7 @@ function SelectField({ value, onChange, options }) {
   );
 }
 
-function ModalShell({ onClose, children, width = 'max-w-sm' }) {
+function ModalShell({ onClose, children, width = "max-w-sm" }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -93,7 +125,7 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
   const fileRef = useRef(null);
 
   const handleFile = (f) => {
-    if (!f || !f.type.startsWith('image/')) return;
+    if (!f || !f.type.startsWith("image/")) return;
     setFile(f);
     const reader = new FileReader();
     reader.onload = (e) => setPreview(e.target.result);
@@ -110,7 +142,9 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
       </button>
 
       <h2 className="text-2xl font-serif text-[#1F0F0B] mb-1">Update photo</h2>
-      <p className="text-xs font-mono text-[#6E6258] mb-6">Fits and crops to a circle automatically.</p>
+      <p className="text-xs font-mono text-[#6E6258] mb-6">
+        Fits and crops to a circle automatically.
+      </p>
 
       <div className="flex flex-col items-center gap-5">
         <div className="w-40 h-40 rounded-full overflow-hidden border-2 border-[#E3D5C7] bg-white flex items-center justify-center">
@@ -128,7 +162,9 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
 
         {preview && (
           <div className="w-full">
-            <label className="text-[11px] font-mono text-[#6E6258] block mb-1">Zoom</label>
+            <label className="text-[11px] font-mono text-[#6E6258] block mb-1">
+              Zoom
+            </label>
             <input
               type="range"
               min="1"
@@ -155,7 +191,7 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
           className="w-full h-12 rounded-full font-serif bg-white border-2 border-[#E3D5C7] text-[#1F0F0B] hover:bg-[#F6EFE8] flex items-center justify-center gap-2"
         >
           <Upload className="w-4 h-4" />
-          {preview ? 'Choose a different photo' : 'Choose a photo'}
+          {preview ? "Choose a different photo" : "Choose a photo"}
         </Button>
       </div>
 
@@ -173,8 +209,8 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
           onClick={() => onSave(file)}
           className={`flex-1 h-12 rounded-full font-serif flex items-center justify-center gap-2 ${
             file && !saving
-              ? 'bg-[#D89A4A] text-[#1F0F0B] hover:bg-[#D89A4A]/90'
-              : 'bg-[#D89A4A]/50 text-[#1F0F0B]/60 cursor-not-allowed'
+              ? "bg-[#D89A4A] text-[#1F0F0B] hover:bg-[#D89A4A]/90"
+              : "bg-[#D89A4A]/50 text-[#1F0F0B]/60 cursor-not-allowed"
           }`}
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -185,12 +221,24 @@ function AvatarUploadModal({ currentAvatar, onClose, onSave, saving }) {
   );
 }
 
-function ConfirmModal({ title, description, confirmLabel, danger, onCancel, onConfirm, loading }) {
+function ConfirmModal({
+  title,
+  description,
+  confirmLabel,
+  danger,
+  onCancel,
+  onConfirm,
+  loading,
+}) {
   return (
     <ModalShell onClose={onCancel} width="max-w-md">
       <div className="flex items-start gap-3 mb-2">
-        <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${danger ? 'bg-[#B8463B]/10' : 'bg-[#D89A4A]/15'}`}>
-          <AlertTriangle className={`w-5 h-5 ${danger ? 'text-[#B8463B]' : 'text-[#D89A4A]'}`} />
+        <div
+          className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${danger ? "bg-[#B8463B]/10" : "bg-[#D89A4A]/15"}`}
+        >
+          <AlertTriangle
+            className={`w-5 h-5 ${danger ? "text-[#B8463B]" : "text-[#D89A4A]"}`}
+          />
         </div>
         <div>
           <h2 className="text-xl font-serif text-[#1F0F0B]">{title}</h2>
@@ -212,8 +260,8 @@ function ConfirmModal({ title, description, confirmLabel, danger, onCancel, onCo
           onClick={onConfirm}
           className={`flex-1 h-12 rounded-full font-serif flex items-center justify-center gap-2 ${
             danger
-              ? 'bg-[#B8463B] text-white hover:bg-[#B8463B]/90'
-              : 'bg-[#D89A4A] text-[#1F0F0B] hover:bg-[#D89A4A]/90'
+              ? "bg-[#B8463B] text-white hover:bg-[#B8463B]/90"
+              : "bg-[#D89A4A] text-[#1F0F0B] hover:bg-[#D89A4A]/90"
           }`}
         >
           {loading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -224,7 +272,11 @@ function ConfirmModal({ title, description, confirmLabel, danger, onCancel, onCo
   );
 }
 
-export default function AccountSettingsPage({ onLogout }) {
+export default function AccountSettingsPage({
+  onLogout,
+  username,
+  onNameChange,
+}) {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -258,12 +310,14 @@ export default function AccountSettingsPage({ onLogout }) {
         setSaved(mapped);
         setForm(mapped);
       } catch (err) {
-        if (!cancelled) setLoadError(err.message || 'Failed to load profile');
+        if (!cancelled) setLoadError(err.message || "Failed to load profile");
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -288,10 +342,11 @@ export default function AccountSettingsPage({ onLogout }) {
       const mapped = fromServerUser(user);
       setSaved(mapped);
       setForm(mapped);
+      onNameChange?.(mapped.name);
       setSavedToast(true);
       setTimeout(() => setSavedToast(false), 2200);
     } catch (err) {
-      setSaveError(err.message || 'Failed to save changes');
+      setSaveError(err.message || "Failed to save changes");
     } finally {
       setSaving(false);
     }
@@ -312,7 +367,7 @@ export default function AccountSettingsPage({ onLogout }) {
       setForm(mapped);
       setShowAvatarModal(false);
     } catch (err) {
-      setSaveError(err.message || 'Failed to upload avatar');
+      setSaveError(err.message || "Failed to upload avatar");
     } finally {
       setAvatarSaving(false);
     }
@@ -327,7 +382,7 @@ export default function AccountSettingsPage({ onLogout }) {
       setForm(mapped);
       setShowRemoveConfirm(false);
     } catch (err) {
-      setSaveError(err.message || 'Failed to remove avatar');
+      setSaveError(err.message || "Failed to remove avatar");
     } finally {
       setRemovingAvatar(false);
     }
@@ -339,9 +394,9 @@ export default function AccountSettingsPage({ onLogout }) {
       await authService.deleteAccount();
       setShowDeleteConfirm(false);
       onLogout?.();
-      navigate('/');
+      navigate("/");
     } catch (err) {
-      setSaveError(err.message || 'Failed to delete account');
+      setSaveError(err.message || "Failed to delete account");
       setDeleting(false);
     }
   };
@@ -364,15 +419,20 @@ export default function AccountSettingsPage({ onLogout }) {
 
   return (
     <div className="h-screen overflow-hidden bg-[#F6EFE8]">
-      <Header onLogout={onLogout} />
-
-      <motion.main
+<Header
+  onLogout={onLogout}
+  username={username}
+  displayName={displayName}
+  avatar={avatar}
+/>      <motion.main
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="h-full max-w-2xl mx-auto px-6 pt-24 pb-6 flex flex-col justify-center overflow-hidden"
       >
-        <h1 className="text-3xl font-serif text-[#1F0F0B] mb-6">Account Settings</h1>
+        <h1 className="text-3xl font-serif text-[#1F0F0B] mb-6">
+          Account Settings
+        </h1>
 
         {saveError && (
           <div className="mb-4 text-sm font-mono text-[#B8463B] bg-[#B8463B]/10 border border-[#B8463B]/30 rounded-xl px-4 py-2">
@@ -383,9 +443,15 @@ export default function AccountSettingsPage({ onLogout }) {
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#E3D5C7] bg-linear-to-br from-[#4E9DDE] via-[#1F0F0B] to-[#4EDE8E] flex items-center justify-center shrink-0">
             {form.avatar ? (
-              <img src={form.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              <img
+                src={form.avatar}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+              />
             ) : (
-              <span className="text-2xl font-serif text-white">{form.name.charAt(0) || '?'}</span>
+              <span className="text-2xl font-serif text-white">
+                {form.name.charAt(0) || "?"}
+              </span>
             )}
           </div>
           <Button
@@ -400,7 +466,9 @@ export default function AccountSettingsPage({ onLogout }) {
             disabled={!form.avatar}
             onClick={() => setShowRemoveConfirm(true)}
             className={`flex items-center gap-1.5 text-sm font-mono ${
-              form.avatar ? 'text-[#6E6258] hover:text-[#B8463B] cursor-pointer' : 'text-[#6E6258]/40 cursor-not-allowed'
+              form.avatar
+                ? "text-[#6E6258] hover:text-[#B8463B] cursor-pointer"
+                : "text-[#6E6258]/40 cursor-not-allowed"
             } transition-colors`}
           >
             <Trash2 className="w-4 h-4" />
@@ -415,9 +483,9 @@ export default function AccountSettingsPage({ onLogout }) {
               ref={nameInputRef}
               type="text"
               value={form.name}
-              onChange={(e) => update('name', e.target.value)}
+              onChange={(e) => update("name", e.target.value)}
               onBlur={() => setEditingName(false)}
-              onKeyDown={(e) => e.key === 'Enter' && setEditingName(false)}
+              onKeyDown={(e) => e.key === "Enter" && setEditingName(false)}
               className="bg-white! border-2 border-[#D89A4A] h-14 px-5 rounded-xl text-[#1F0F0B] font-mono"
             />
           ) : (
@@ -426,7 +494,7 @@ export default function AccountSettingsPage({ onLogout }) {
               onClick={() => setEditingName(true)}
               className="w-full h-14 px-5 rounded-xl bg-white border-2 border-[#E3D5C7] flex items-center justify-between text-left text-[#1F0F0B] font-mono hover:border-[#D89A4A] transition-colors"
             >
-              <span>{form.name || 'Add your name'}</span>
+              <span>{form.name || "Add your name"}</span>
               <Pencil className="w-4 h-4 text-[#6E6258]" />
             </button>
           )}
@@ -434,22 +502,38 @@ export default function AccountSettingsPage({ onLogout }) {
 
         <div className="mb-6">
           <FieldLabel>Language</FieldLabel>
-          <SelectField value={form.language} onChange={(v) => update('language', v)} options={LANGUAGES} />
+          <SelectField
+            value={form.language}
+            onChange={(v) => update("language", v)}
+            options={LANGUAGES}
+          />
         </div>
 
         <div className="mb-6">
           <FieldLabel>Country</FieldLabel>
-          <SelectField value={form.country} onChange={(v) => update('country', v)} options={COUNTRIES} />
+          <SelectField
+            value={form.country}
+            onChange={(v) => update("country", v)}
+            options={COUNTRIES}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-5 mb-12">
           <div>
             <FieldLabel>Standard Quality</FieldLabel>
-            <SelectField value={form.quality} onChange={(v) => update('quality', v)} options={QUALITIES} />
+            <SelectField
+              value={form.quality}
+              onChange={(v) => update("quality", v)}
+              options={QUALITIES}
+            />
           </div>
           <div>
             <FieldLabel>Default Reconstruction</FieldLabel>
-            <SelectField value={form.reconstruction} onChange={(v) => update('reconstruction', v)} options={RECONSTRUCTIONS} />
+            <SelectField
+              value={form.reconstruction}
+              onChange={(v) => update("reconstruction", v)}
+              options={RECONSTRUCTIONS}
+            />
           </div>
         </div>
 
@@ -461,8 +545,8 @@ export default function AccountSettingsPage({ onLogout }) {
               onClick={handleSaveChanges}
               className={`h-12 px-8 rounded-full font-serif flex items-center gap-2 ${
                 isDirty && !saving
-                  ? 'bg-[#D89A4A] text-[#1F0F0B] hover:bg-[#D89A4A]/90 cursor-pointer'
-                  : 'bg-[#D89A4A]/50 text-[#1F0F0B]/60 cursor-not-allowed'
+                  ? "bg-[#D89A4A] text-[#1F0F0B] hover:bg-[#D89A4A]/90 cursor-pointer"
+                  : "bg-[#D89A4A]/50 text-[#1F0F0B]/60 cursor-not-allowed"
               }`}
             >
               {saving && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -474,8 +558,8 @@ export default function AccountSettingsPage({ onLogout }) {
               onClick={handleCancel}
               className={`h-12 px-8 rounded-full font-serif bg-transparent border-2 ${
                 isDirty
-                  ? 'border-[#E3D5C7] text-[#1F0F0B] hover:bg-white cursor-pointer'
-                  : 'border-[#E3D5C7]/50 text-[#1F0F0B]/40 cursor-not-allowed'
+                  ? "border-[#E3D5C7] text-[#1F0F0B] hover:bg-white cursor-pointer"
+                  : "border-[#E3D5C7]/50 text-[#1F0F0B]/40 cursor-not-allowed"
               }`}
             >
               Cancel

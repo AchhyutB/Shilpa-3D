@@ -1,16 +1,21 @@
-import { User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-export default function Header({ onNavigate, onLogout, username }) {
+export default function Header({
+  onNavigate,
+  onLogout,
+  username,
+  displayName,
+  avatar,
+}) {
   const navigate = useNavigate();
 
   return (
     <header className="fixed top-0 left-0 right-0 border-b border-border/30 backdrop-blur-sm z-50 bg-background/80">
       <div className="max-w-7xl mx-auto px-2 py-2 flex justify-between items-center">
-
         {/* Logo */}
         <button
-          onClick={() => navigate('/home')}
+          onClick={() => navigate("/home")}
           className="hover:opacity-80 transition-opacity"
         >
           <img
@@ -23,7 +28,7 @@ export default function Header({ onNavigate, onLogout, username }) {
         {/* Navigation */}
         <nav className="flex items-center gap-8">
           <button
-            onClick={() => navigate('/history')}
+            onClick={() => navigate("/history")}
             className="text-foreground hover:text-accent transition-colors"
           >
             History
@@ -32,7 +37,7 @@ export default function Header({ onNavigate, onLogout, username }) {
           <button
             onClick={() => {
               onLogout();
-              navigate('/');
+              navigate("/");
             }}
             className="text-foreground hover:text-accent transition-colors"
           >
@@ -41,11 +46,22 @@ export default function Header({ onNavigate, onLogout, username }) {
 
           {/* User Profile — now clickable, navigates to /account */}
           <button
-            onClick={() => navigate('/account')}
+            onClick={() => navigate("/account")}
             className="flex items-center gap-2 bg-secondary/40 rounded-full px-4 py-2 hover:bg-secondary/60 transition-colors"
           >
-            <User size={20} className="text-accent" />
-            <span className="text-foreground font-serif">{username || 'User'}</span>
+            {avatar ? (
+              <img
+                src={avatar}
+                alt="Profile"
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
+              <User size={20} className="text-accent" />
+            )}
+
+            <span className="text-foreground font-serif">
+              {displayName || username || "User"}
+            </span>
           </button>
         </nav>
       </div>

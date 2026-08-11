@@ -11,7 +11,7 @@ import ResultsPage from "./pages/results-page";
 import ThreeDViewerPage from "./pages/3d-viewer-page";
 import HistoryPage from "./pages/history-page";
 import OAuthPage from "./pages/oauth-page";
-import AccountSettingsPage from './pages/account-page';
+import AccountSettingsPage from "./pages/account-page";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
@@ -20,6 +20,12 @@ export default function App() {
   const [username, setUsername] = useState(
     localStorage.getItem("username") || "",
   );
+
+  const [displayName, setDisplayName] = useState(
+    localStorage.getItem("displayName") || "",
+  );
+
+  const [avatar, setAvatar] = useState(localStorage.getItem("avatar") || null);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -47,12 +53,20 @@ export default function App() {
       .getProfile()
       .then(({ user }) => {
         if (cancelled) return;
+
         if (!user) {
           handleLogout();
           return;
         }
+
         setUsername(user.username);
         localStorage.setItem("username", user.username);
+
+        setDisplayName(user.name || "");
+        localStorage.setItem("displayName", user.name || "");
+
+        setAvatar(user.avatar_url || null);
+        localStorage.setItem("avatar", user.avatar_url || "");
       })
       .catch(() => {
         if (!cancelled) handleLogout();
@@ -129,6 +143,19 @@ export default function App() {
           }
         />
         <Route
+          path="/account"
+          element={
+            <AccountSettingsPage
+              onLogout={handleLogout}
+              username={username}
+              onNameChange={(newName) => {
+                setDisplayName(newName);
+                localStorage.setItem("displayName", newName);
+              }}
+            />
+          }
+        />
+        <Route
           path="/3d-viewer"
           element={
             isLoggedIn ? (
@@ -156,13 +183,9 @@ export default function App() {
             )
           }
         />
-         <Route
+        <Route
           path="/account"
-          element={
-            <AccountSettingsPage
-              onLogout={handleLogout}
-            />
-          }
+          element={<AccountSettingsPage onLogout={handleLogout} />}
         />
         <Route
           path="/oauth"
