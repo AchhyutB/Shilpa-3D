@@ -16,7 +16,7 @@ export default function Header({ onNavigate, onLogout, username }) {
           <img
             src="/assets/main.png"
             alt="Shilpa3D Logo"
-            className="w-[90px] h-auto object-contain"
+            className="w-22.5 h-auto object-contain"
           />
         </button>
 
@@ -39,11 +39,14 @@ export default function Header({ onNavigate, onLogout, username }) {
             Sign Out
           </button>
 
-          {/* User Profile */}
-          <div className="flex items-center gap-2 bg-secondary/40 rounded-full px-4 py-2">
+          {/* User Profile — now clickable, navigates to /account */}
+          <button
+            onClick={() => navigate('/account')}
+            className="flex items-center gap-2 bg-secondary/40 rounded-full px-4 py-2 hover:bg-secondary/60 transition-colors"
+          >
             <User size={20} className="text-accent" />
             <span className="text-foreground font-serif">{username || 'User'}</span>
-          </div>
+          </button>
         </nav>
       </div>
     </header>

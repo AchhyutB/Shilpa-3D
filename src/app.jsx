@@ -11,6 +11,7 @@ import ResultsPage from "./pages/results-page";
 import ThreeDViewerPage from "./pages/3d-viewer-page";
 import HistoryPage from "./pages/history-page";
 import OAuthPage from "./pages/oauth-page";
+import AccountSettingsPage from './pages/account-page';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
@@ -153,6 +154,14 @@ export default function App() {
             ) : (
               <Navigate to="/login" replace />
             )
+          }
+        />
+         <Route
+          path="/account"
+          element={
+            <AccountSettingsPage
+              onLogout={handleLogout}
+            />
           }
         />
         <Route
