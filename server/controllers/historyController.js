@@ -1,6 +1,13 @@
 import fs from "fs";
 import path from "path";
 
+// Strips a leading UTF-8 BOM if present (e.g. from PowerShell's
+// `Out-File -Encoding utf8`, which writes one by default) before parsing.
+function readJsonSafe(filePath) {
+  const raw = fs.readFileSync(filePath, "utf-8").replace(/^\uFEFF/, "");
+  return JSON.parse(raw);
+}
+
 export const getHistory = (req, res) => {
   const uploadsDir = path.join("server", "uploads");
 
@@ -18,36 +25,52 @@ export const getHistory = (req, res) => {
         const ownerPath = path.join(uploadsDir, sessionId, "owner.json");
         if (!fs.existsSync(ownerPath)) return null;
 
-        const ownerData = JSON.parse(fs.readFileSync(ownerPath, "utf-8"));
-        if (ownerData.owner !== req.user.username) return null;
+        // A single malformed/corrupt session (bad JSON, BOM, partial write,
+        // a locked/renamed folder, etc.) should never take down the whole
+        // History list -- skip just that one and keep going.
+        try {
+          const ownerData = readJsonSafe(ownerPath);
+          if (ownerData.owner !== req.user.username) return null;
 
-        let statue = null;
-        let method = null;
-        let stage = "not_started";
-        let percent = 0;
+          let statue = null;
+          let method = null;
+          let stage = "not_started";
+          let percent = 0;
 
-        const manifestPath = path.join(uploadsDir, sessionId, "results", "manifest.json");
-        if (fs.existsSync(manifestPath)) {
-          const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-          statue = manifest.statue;
-          method = manifest.method;
+          const manifestPath = path.join(uploadsDir, sessionId, "results", "manifest.json");
+          if (fs.existsSync(manifestPath)) {
+            try {
+              const manifest = readJsonSafe(manifestPath);
+              statue = manifest.statue;
+              method = manifest.method;
+            } catch (err) {
+              console.error(`[history] Corrupt manifest.json for session ${sessionId}:`, err.message);
+            }
+          }
+
+          const statusPath = path.join(uploadsDir, sessionId, "status.json");
+          if (fs.existsSync(statusPath)) {
+            try {
+              const status = readJsonSafe(statusPath);
+              stage = status.stage;
+              percent = status.percent;
+            } catch (err) {
+              console.error(`[history] Corrupt status.json for session ${sessionId}:`, err.message);
+            }
+          }
+
+          return {
+            session_id: sessionId,
+            statue,
+            method,
+            stage,
+            percent,
+            created_at: ownerData.createdAt || null,
+          };
+        } catch (err) {
+          console.error(`[history] Skipping session ${sessionId} — corrupt owner.json:`, err.message);
+          return null;
         }
-
-        const statusPath = path.join(uploadsDir, sessionId, "status.json");
-        if (fs.existsSync(statusPath)) {
-          const status = JSON.parse(fs.readFileSync(statusPath, "utf-8"));
-          stage = status.stage;
-          percent = status.percent;
-        }
-
-        return {
-          session_id: sessionId,
-          statue,
-          method,
-          stage,
-          percent,
-          created_at: ownerData.createdAt || null,
-        };
       })
       .filter(Boolean)
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -69,7 +92,7 @@ export const deleteSession = (req, res) => {
   }
 
   try {
-    const ownerData = JSON.parse(fs.readFileSync(ownerPath, "utf-8"));
+    const ownerData = readJsonSafe(ownerPath);
     if (ownerData.owner !== req.user.username) {
       return res.status(403).json({ message: "Not your session" });
     }

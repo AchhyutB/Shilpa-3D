@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
-import { Button } from '@/components/ui/button';
-import Header from '@/components/shared/header';
-import { ChevronLeft, CheckCircle } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import * as GaussianSplats3D from "@mkkellogg/gaussian-splats-3d";
+import { Button } from "@/components/ui/button";
+import Header from "@/components/shared/header";
+import { ChevronLeft, CheckCircle } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const containerRef = useRef(null);
   const viewerRef = useRef(null);
 
@@ -21,14 +21,14 @@ export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
 
   useEffect(() => {
     if (!sessionId || !filename) {
-      navigate('/results', { replace: true });
+      navigate("/results", { replace: true });
       return;
     }
     if (!containerRef.current) return;
 
     let cancelled = false;
-    const token = localStorage.getItem('accessToken');
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
+    const token = localStorage.getItem("accessToken");
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:8081/api";
     const fileUrl = `${apiBase}/files/${sessionId}/${filename}`;
 
     const viewer = new GaussianSplats3D.Viewer({
@@ -55,7 +55,7 @@ export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
       .catch((err) => {
         if (!cancelled) {
           console.error(err);
-          setError('Failed to load model');
+          setError("Failed to load model");
           setLoading(false);
         }
       });
@@ -77,17 +77,17 @@ export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
 
   const handleDownload = () => {
     if (!sessionId || !filename) return;
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
-    const token = localStorage.getItem('accessToken');
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:8081/api";
+    const token = localStorage.getItem("accessToken");
 
     fetch(`${apiBase}/files/${sessionId}/${filename}`, {
-      credentials: 'include',
+      credentials: "include",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((res) => res.blob())
       .then((blob) => {
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = url;
         link.download = filename;
         link.click();
@@ -99,12 +99,7 @@ export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
 
   return (
     <div className="min-h-screen bg-background">
-<Header
-  onLogout={onLogout}
-  username={username}
-  displayName={displayName}
-  avatar={avatar}
-/>
+      <Header onLogout={onLogout} username={username} />
       {downloadSuccess && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -123,7 +118,7 @@ export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4 }}
-            onClick={() => navigate('/results')}
+            onClick={() => navigate("/results")}
             className="flex items-center text-sm font-mono gap-2 text-secondary-foreground hover:text-accent transition-colors mb-8"
           >
             <ChevronLeft size={20} />
@@ -149,13 +144,17 @@ export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
               <div className="w-full h-75 sm:h-120 bg-border/40 border border-border/30 rounded-2xl overflow-hidden relative">
                 {loading && (
                   <div className="absolute inset-0 flex items-center justify-center z-10 bg-border/40">
-                    <p className="text-sm text-secondary-foreground font-mono">Loading model…</p>
+                    <p className="text-sm text-secondary-foreground font-mono">
+                      Loading model…
+                    </p>
                   </div>
                 )}
 
                 {error && (
                   <div className="absolute inset-0 flex items-center justify-center z-10 bg-border/40">
-                    <p className="text-sm text-red-500 font-mono px-8 text-center">{error}</p>
+                    <p className="text-sm text-red-500 font-mono px-8 text-center">
+                      {error}
+                    </p>
                   </div>
                 )}
 
@@ -192,7 +191,7 @@ export default function ThreeDViewerPage({ isLoggedIn, onLogout, username }) {
                 <Button
                   variant="outline"
                   className="flex-1 sm:flex-none sm:w-40 border-foreground! text-foreground font-serif hover:bg-secondary py-6 rounded-full"
-                  onClick={() => navigate('/home')}
+                  onClick={() => navigate("/home")}
                 >
                   Home
                 </Button>
